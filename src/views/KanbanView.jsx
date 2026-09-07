@@ -18,7 +18,12 @@ import {
   Sparkles,
   Info,
   Users,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  ExternalLink,
+  Layers
 } from 'lucide-react';
 
 export const KanbanView = () => {
@@ -44,6 +49,29 @@ export const KanbanView = () => {
 
   // Bilgi Modalı State'i (İşlem Hakkında)
   const [infoModalOrder, setInfoModalOrder] = useState(null);
+
+  // Tıklanınca Açılan Kartlar (Akordiyon / Sadeleştirme)
+  const [expandedCardIds, setExpandedCardIds] = useState({});
+
+  const toggleCardExpand = (orderId, e) => {
+    if (e) e.stopPropagation();
+    setExpandedCardIds(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }));
+  };
+
+  const areAllExpanded = orders.length > 0 && orders.every(o => !!expandedCardIds[o.id]);
+
+  const toggleExpandAll = () => {
+    if (areAllExpanded) {
+      setExpandedCardIds({});
+    } else {
+      const all = {};
+      orders.forEach(o => all[o.id] = true);
+      setExpandedCardIds(all);
+    }
+  };
 
   // Filtreleme Durumları
   const [searchTerm, setSearchTerm] = useState('');
@@ -271,7 +299,18 @@ export const KanbanView = () => {
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Sadeleştir / Tümünü Aç Butonu */}
+            <button
+              type="button"
+              className="btn-dental btn-dental-secondary"
+              onClick={toggleExpandAll}
+              title={areAllExpanded ? 'Tüm kartları kompakt görünüme al' : 'Tüm kartların detaylarını aç'}
+            >
+              <ChevronsUpDown size={15} color="var(--dental-blue)" />
+              <span>{areAllExpanded ? 'Kutuları Sadeleştir' : 'Tüm Kutuları Aç'}</span>
+            </button>
+
             <button
               type="button"
               className="btn-dental btn-dental-secondary"
@@ -599,173 +638,202 @@ export const KanbanView = () => {
                         normal: { label: 'Normal', color: '#0284c7', bg: '#e0f2fe' }
                       }[order.priority || 'normal'];
 
+                      const isExpanded = !!expandedCardIds[order.id];
+
                       return (
                         <div
                           key={order.id}
-                          className="job-card"
+                          className={`job-card ${isExpanded ? 'is-expanded' : ''}`}
                           data-priority={order.priority}
                           draggable={true}
                           onDragStart={(e) => handleDragStart(e, order.id)}
                           onDragEnd={handleDragEnd}
-                          onClick={() => navigate('/orders/' + order.id)}
+                          onClick={(e) => toggleCardExpand(order.id, e)}
+                          title="Tıklayarak detayları ve işlemleri açın/kapatın"
                         >
-                          {/* Üst Bilgi: Sipariş No & Öncelik */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.8rem', fontWeight: 800, color: 'var(--dental-blue)' }}>
-                              #{order.id}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                padding: '2px 7px',
-                                borderRadius: 4,
-                                color: priorityConfig.color,
-                                background: priorityConfig.bg
-                              }}
-                            >
-                              {priorityConfig.label}
-                            </span>
-                          </div>
+                          {/* Üst Satır: Sipariş No + Öncelik + Hasta Adı + Materyal/Renk */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6, marginBottom: 4 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontFamily: 'JetBrains Mono', fontSize: '0.78rem', fontWeight: 800, color: 'var(--dental-blue)' }}>
+                                  #{order.id}
+                                </span>
+                                {order.priority !== 'normal' && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.66rem',
+                                      fontWeight: 800,
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      color: priorityConfig.color,
+                                      background: priorityConfig.bg
+                                    }}
+                                  >
+                                    {priorityConfig.label}
+                                  </span>
+                                )}
+                                <span
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    padding: '1px 6px',
+                                    borderRadius: 4,
+                                    background: 'var(--bg-surface-elevated)',
+                                    color: 'var(--text-secondary)'
+                                  }}
+                                >
+                                  {materials[order.materialId]?.name?.split(' ')[0] || order.materialId} • {order.shade}
+                                </span>
+                              </div>
 
-                          {/* Hasta Adı */}
-                          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 3 }}>
-                            {pat?.name || 'İsimsiz Hasta'}
-                          </div>
-
-                          {/* Klinik & Hekim */}
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Building2 size={13} />
-                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {comp?.name ? comp.name.replace(' Ağız ve Diş Sağlığı', '') : '-'}
-                              {doc?.name ? ` (${doc.name})` : ''}
-                            </span>
-                          </div>
-
-                          {/* Diş No & VITA Renk Rozetleri */}
-                          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                            <span
-                              style={{
-                                padding: '2px 7px',
-                                background: 'var(--bg-surface-elevated)',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: 4,
-                                fontFamily: 'JetBrains Mono',
-                                fontSize: '0.72rem',
-                                fontWeight: 700
-                              }}
-                            >
-                              🦷 {(order.teeth || []).join(', ') || '-'}
-                            </span>
-
-                            <span
-                              style={{
-                                padding: '2px 7px',
-                                background: '#f0fdf4',
-                                color: '#16a34a',
-                                border: '1px solid #bbf7d0',
-                                borderRadius: 4,
-                                fontSize: '0.72rem',
-                                fontWeight: 700
-                              }}
-                            >
-                              🎨 {order.shade || 'A2'}
-                            </span>
-                          </div>
-
-                          {/* Mevcut Aşama & İlerleme */}
-                          <div style={{ marginTop: 10 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginBottom: 4 }}>
-                              <span style={{ fontWeight: 700, color: 'var(--dental-blue)' }}>
-                                Adım {curIndex + 1}/{totalSteps}: {curStep?.name || 'İşlemde'}
-                              </span>
-                              <span style={{ color: 'var(--text-muted)' }}>%{pct}</span>
+                              {/* Hasta Adı */}
+                              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {pat?.name || 'İsimsiz Hasta'}
+                              </div>
                             </div>
-                            <div style={{ height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, var(--dental-blue), var(--dental-teal))' }} />
-                            </div>
-                          </div>
 
-                          {/* Alt Kısım: Sorumlu Teknisyen Seçimi & Teslim Tarihi */}
-                          <div
-                            style={{
-                              marginTop: 10,
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              fontSize: '0.74rem',
-                              color: 'var(--text-muted)'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                            {/* Sağ Üst: Hızlı İlerletme & Genişletme İkonu */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <User size={12} color="var(--dental-blue)" />
-                              <select
-                                value={curStep?.technician || ''}
-                                onChange={(e) => assignTechnicianToStep(order.id, curIndex, e.target.value)}
-                                title="Sorumlu Teknisyeni Değiştir"
-                                style={{
-                                  background: 'var(--bg-surface-elevated)',
-                                  border: '1px solid var(--border-subtle)',
-                                  borderRadius: 4,
-                                  fontSize: '0.72rem',
-                                  padding: '2px 4px',
-                                  color: 'var(--text-primary)',
-                                  cursor: 'pointer',
-                                  maxWidth: 110,
-                                  outline: 'none'
-                                }}
-                              >
-                                <option value="">Teknisyen Seç</option>
-                                {technicians.map(t => (
-                                  <option key={t} value={t}>{t.split(' ')[0]}</option>
-                                ))}
-                              </select>
+                              {!isExpanded && (
+                                <button
+                                  type="button"
+                                  className="job-regress-btn"
+                                  style={{ width: 26, height: 26, minHeight: 'unset', padding: 0, borderRadius: 6, background: 'rgba(2, 132, 199, 0.08)', color: 'var(--dental-blue)', border: 'none' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    advanceOrderToNextStep(order.id);
+                                  }}
+                                  title={isLastStep ? 'İşi Bitir' : 'Sonraki Aşamaya İlerlet'}
+                                >
+                                  <Check size={14} strokeWidth={2.5} />
+                                </button>
+                              )}
+                              <div className="card-expand-indicator" style={{ padding: 2 }}>
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </div>
                             </div>
+                          </div>
 
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: order.priority === 'urgent' ? '#dc2626' : 'inherit', fontWeight: order.priority === 'urgent' ? 700 : 400 }}>
-                              <Calendar size={12} />
-                              {order.deliveryDate || '-'}
+                          {/* Orta Satır (Kompakt Bilgi): Klinik Adı & Mevcut Aşama Yüzdesi */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>
+                              🏥 {comp?.name ? comp.name.replace(' Ağız ve Diş Sağlığı', '') : '-'}
+                            </span>
+                            <span style={{ fontWeight: 700, color: 'var(--dental-blue)', fontSize: '0.72rem' }}>
+                              %{pct} ({curIndex + 1}/{totalSteps})
                             </span>
                           </div>
 
-                          {/* HIZLI EYLEM BUTONLARI (Kullanışlılık & Hız) */}
-                          <div className="job-card-actions" onClick={(e) => e.stopPropagation()}>
-                            {/* Bir önceki aşamaya geri alma butonu */}
-                            {curIndex > 0 && (
-                              <button
-                                type="button"
-                                className="job-regress-btn"
-                                onClick={() => regressOrderToPrevStep(order.id)}
-                                title="Bir önceki istasyona geri al"
-                              >
-                                <ArrowLeft size={13} />
-                              </button>
-                            )}
-
-                            {/* Doğrudan Sonraki Aşamaya İlerletme / Tamamlama Butonu */}
-                            <button
-                              type="button"
-                              className="job-advance-btn"
-                              onClick={() => advanceOrderToNextStep(order.id)}
-                              title={isLastStep ? 'Bu işi bitir ve arşive aktar' : 'Sonraki üretim istasyonuna aktar'}
-                            >
-                              <span>{isLastStep ? '✓ İşi Bitir' : '✓ İlerlet'}</span>
-                              <ArrowRight size={13} />
-                            </button>
-
-                            {/* İşlem Hakkında Butonu (Açıklayıcı Detay Modalı) */}
-                            <button
-                              type="button"
-                              className="btn-dental btn-dental-secondary"
-                              style={{ padding: '6px 8px', fontSize: '0.72rem' }}
-                              onClick={() => setInfoModalOrder(order)}
-                              title="Bu istasyonun teknik açıklamasını ve sipariş notlarını gör"
-                            >
-                              <Info size={12} />
-                              <span>İşlem Hakkında</span>
-                            </button>
+                          {/* İnce Şık İlerleme Çubuğu */}
+                          <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden', marginTop: 5 }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, var(--dental-blue), var(--dental-teal))' }} />
                           </div>
+
+                          {/* TIKLANINCA AÇILAN ZENGİN DETAY ÇEKMECESİ */}
+                          {isExpanded && (
+                            <div className="job-card-details-drawer" onClick={(e) => e.stopPropagation()}>
+                              {/* 1. Diş Numaraları ve Hekim */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.78rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span style={{ color: 'var(--text-secondary)' }}>🦷 FDI Dişler:</span>
+                                  <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--text-primary)' }}>
+                                    {(order.teeth || []).join(', ') || 'Tüm Çene'}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span style={{ color: 'var(--text-secondary)' }}>👨‍⚕️ Sorumlu Hekim:</span>
+                                  <span style={{ fontWeight: 600 }}>{doc?.name || '-'}</span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <span style={{ color: 'var(--text-secondary)' }}>📅 Teslim Tarihi:</span>
+                                  <span style={{ fontWeight: 700, color: order.priority === 'urgent' ? '#dc2626' : 'var(--text-primary)' }}>
+                                    {order.deliveryDate || '-'}
+                                  </span>
+                                </div>
+
+                                {/* Sorumlu Teknisyen Seçimi */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                                  <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <User size={12} color="var(--dental-blue)" /> Teknisyen:
+                                  </span>
+                                  <select
+                                    value={curStep?.technician || ''}
+                                    onChange={(e) => assignTechnicianToStep(order.id, curIndex, e.target.value)}
+                                    title="Sorumlu Teknisyeni Değiştir"
+                                    style={{
+                                      background: 'var(--bg-surface-elevated)',
+                                      border: '1px solid var(--border-subtle)',
+                                      borderRadius: 4,
+                                      fontSize: '0.72rem',
+                                      padding: '2px 6px',
+                                      color: 'var(--text-primary)',
+                                      cursor: 'pointer',
+                                      maxWidth: 130,
+                                      outline: 'none'
+                                    }}
+                                  >
+                                    <option value="">Teknisyen Seç</option>
+                                    {technicians.map(t => (
+                                      <option key={t} value={t}>{t.split(' ')[0]}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {order.notes && (
+                                  <div style={{ marginTop: 4, padding: '6px 8px', background: 'var(--bg-surface-elevated)', borderRadius: 4, fontSize: '0.74rem', borderLeft: '2px solid var(--dental-blue)' }}>
+                                    📝 {order.notes}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* HIZLI EYLEM BUTONLARI */}
+                              <div className="job-card-actions" style={{ marginTop: 10, paddingTop: 8 }}>
+                                {curIndex > 0 && (
+                                  <button
+                                    type="button"
+                                    className="job-regress-btn"
+                                    onClick={() => regressOrderToPrevStep(order.id)}
+                                    title="Bir önceki istasyona geri al"
+                                  >
+                                    <ArrowLeft size={13} />
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  className="job-advance-btn"
+                                  onClick={() => advanceOrderToNextStep(order.id)}
+                                  title={isLastStep ? 'Bu işi bitir ve arşive aktar' : 'Sonraki üretim istasyonuna aktar'}
+                                >
+                                  <span>{isLastStep ? '✓ İşi Bitir' : '✓ İlerlet'}</span>
+                                  <ArrowRight size={13} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="btn-dental btn-dental-secondary"
+                                  style={{ padding: '6px 8px', fontSize: '0.72rem' }}
+                                  onClick={() => setInfoModalOrder(order)}
+                                  title="Bu istasyonun rehberini ve talimatlarını gör"
+                                >
+                                  <Info size={12} />
+                                  <span>Rehber</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="btn-dental btn-dental-secondary"
+                                  style={{ padding: '6px 8px', fontSize: '0.72rem' }}
+                                  onClick={() => navigate('/orders/' + order.id)}
+                                  title="Tam Sipariş ve Aşama Sayfasına Git"
+                                >
+                                  <ExternalLink size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -800,70 +868,94 @@ export const KanbanView = () => {
                 const doc = doctors.find(d => d.id === order.doctorId);
                 const comp = companies.find(c => c.id === order.companyId);
 
+                const isExpanded = !!expandedCardIds[order.id];
+
                 return (
                   <div
                     key={order.id}
-                    className="dental-card"
+                    className={`dental-card ${isExpanded ? 'is-expanded' : ''}`}
                     style={{
                       borderLeft: '4px solid var(--status-completed)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between'
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      padding: isExpanded ? '16px' : '12px 16px'
                     }}
+                    onClick={() => toggleCardExpand(order.id)}
+                    title="Tıklayarak detayları açın / kapatın"
                   >
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--status-completed)', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--status-completed)', fontSize: '0.85rem' }}>
                           #{order.id}
                         </span>
-                        <span className="badge-pill badge-completed">
+                        <span className="badge-pill badge-completed" style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
                           Tamamlandı ✓
                         </span>
                       </div>
-
-                      <div style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 4 }}>
-                        {pat?.name || 'İsimsiz Hasta'}
-                      </div>
-
-                      <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                        🏥 {comp?.name || '-'} {doc?.name ? `• ${doc.name}` : ''}
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)' }}>
-                          Materyal: {order.materialId}
-                        </span>
-                        <span className="badge-pill" style={{ background: '#e0f2fe', color: '#0284c7', fontWeight: 700 }}>
-                          VITA: {order.shade}
-                        </span>
-                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono' }}>
-                          FDI: {(order.teeth || []).join(', ')}
-                        </span>
+                      <div className="card-expand-indicator">
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </div>
                     </div>
 
-                    {/* YENİDEN BAŞLAT & DETAY BUTONLARI */}
-                    <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8 }}>
-                      <button
-                        type="button"
-                        className="btn-dental btn-dental-primary btn-dental-sm"
-                        style={{ flex: 1, background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
-                        onClick={(e) => handleRestartOrder(order.id, e)}
-                        title="Bu işlemi tekrar aktif üretim hattına al"
-                      >
-                        <RotateCcw size={14} />
-                        <span>İşlemi Yeniden Başlat & Revize Et</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="btn-dental btn-dental-secondary btn-dental-sm"
-                        onClick={() => navigate('/orders/' + order.id)}
-                      >
-                        <span>Detay & Düzenle</span>
-                        <ArrowRight size={13} />
-                      </button>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {pat?.name || 'İsimsiz Hasta'}
                     </div>
+
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                      🏥 {comp?.name || '-'} {doc?.name ? `• ${doc.name}` : ''}
+                    </div>
+
+                    {/* Tıklanınca Açılan Detaylar */}
+                    {isExpanded && (
+                      <div className="job-card-details-drawer" onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontSize: '0.74rem' }}>
+                            Materyal: {order.materialId}
+                          </span>
+                          <span className="badge-pill" style={{ background: '#e0f2fe', color: '#0284c7', fontWeight: 700, fontSize: '0.74rem' }}>
+                            VITA: {order.shade}
+                          </span>
+                          <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.74rem' }}>
+                            Dişler: {(order.teeth || []).join(', ')}
+                          </span>
+                        </div>
+
+                        {order.deliveryDate && (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 8 }}>
+                            📅 Teslim: <strong>{order.deliveryDate}</strong>
+                          </div>
+                        )}
+
+                        {order.notes && (
+                          <div style={{ marginTop: 6, padding: '6px 8px', background: 'var(--bg-surface-elevated)', borderRadius: 4, fontSize: '0.74rem', borderLeft: '2px solid var(--status-completed)' }}>
+                            📝 {order.notes}
+                          </div>
+                        )}
+
+                        {/* YENİDEN BAŞLAT & DETAY BUTONLARI */}
+                        <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-primary btn-dental-sm"
+                            style={{ flex: 1, background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
+                            onClick={(e) => handleRestartOrder(order.id, e)}
+                            title="Bu işlemi tekrar aktif üretim hattına al"
+                          >
+                            <RotateCcw size={14} />
+                            <span>Üretime Geri Al & Yeniden Başlat</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-secondary btn-dental-sm"
+                            onClick={() => navigate('/orders/' + order.id)}
+                          >
+                            <span>Detay & Düzenle</span>
+                            <ArrowRight size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })

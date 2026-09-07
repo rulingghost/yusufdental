@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Plus, Trash2, Edit3, User, FileText, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, User, FileText, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const PatientsView = () => {
   const { patients, doctors, companies, orders, savePatient, deletePatient, setIsOrderModalOpen, searchQuery } = useDental();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [expandedPatientIds, setExpandedPatientIds] = useState({});
+
+  const toggleExpandPatient = (id, e) => {
+    if (e) e.stopPropagation();
+    setExpandedPatientIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const [companyId, setCompanyId] = useState('');
   const [doctorId, setDoctorId] = useState('');
@@ -101,30 +110,45 @@ export const PatientsView = () => {
             const comp = companies.find(c => c.id === pat.companyId);
             const patOrders = orders.filter(o => o.patientId === pat.id);
 
+            const isExpanded = !!expandedPatientIds[pat.id];
+
             return (
-              <div key={pat.id} className="dental-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div
+                key={pat.id}
+                className={`dental-card ${isExpanded ? 'is-expanded' : ''}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  padding: isExpanded ? '18px' : '14px 18px'
+                }}
+                onClick={(e) => toggleExpandPatient(pat.id, e)}
+                title="Detayları açmak / kapatmak için tıklayın"
+              >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>{pat.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{pat.name}</div>
                       <div style={{ fontSize: '0.78rem', fontFamily: 'JetBrains Mono', color: 'var(--dental-blue)', fontWeight: 700, marginTop: 2 }}>
                         {pat.chartNumber} • {pat.age} Yaş ({pat.gender})
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                       <button
                         type="button"
                         className="btn-dental btn-dental-secondary btn-dental-sm"
-                        style={{ padding: '5px 8px' }}
+                        style={{ padding: '5px 7px' }}
                         onClick={() => openEditModal(pat)}
                         title="Hastayı Düzenle"
                       >
-                        <Edit3 size={14} />
+                        <Edit3 size={13} />
                       </button>
                       <button
                         type="button"
                         className="btn-dental btn-dental-danger btn-dental-sm"
-                        style={{ padding: '5px 8px' }}
+                        style={{ padding: '5px 7px' }}
                         onClick={() => {
                           if (window.confirm(`${pat.name} silinsin mi?`)) {
                             deletePatient(pat.id);
@@ -132,31 +156,47 @@ export const PatientsView = () => {
                         }}
                         title="Sil"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
+                      <div className="card-expand-indicator" style={{ marginLeft: 4 }}>
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                    <div><strong>Hekim:</strong> {doc?.name || '-'}</div>
-                    <div><strong>Klinik:</strong> {comp?.name || '-'}</div>
-                    {pat.notes && (
-                      <div style={{ marginTop: 6, padding: '6px 10px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', borderLeft: '2px solid var(--dental-teal)' }}>
-                        📝 {pat.notes}
-                      </div>
-                    )}
+                  {/* Kompakt Özet Satırı */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <span>🏥 {comp?.name || 'Klinik Atanmamış'}</span>
+                    <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontSize: '0.72rem' }}>
+                      {patOrders.length} İş Emri
+                    </span>
                   </div>
-                </div>
 
-                <div style={{ marginTop: 18, paddingTop: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-                  <span>Geçmiş İşler: <strong>{patOrders.length}</strong></span>
-                  <button
-                    type="button"
-                    className="btn-dental btn-dental-secondary btn-dental-sm"
-                    onClick={() => setIsOrderModalOpen(true)}
-                  >
-                    + Yeni İş Emri
-                  </button>
+                  {/* TIKLANINCA AÇILAN DETAYLAR */}
+                  {isExpanded && (
+                    <div className="job-card-details-drawer" onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        <div>👨‍⚕️ Sorumlu Hekim: <strong>{doc?.name || '-'}</strong></div>
+                        <div>🏥 Klinik: <strong>{comp?.name || '-'}</strong></div>
+                        {pat.notes && (
+                          <div style={{ marginTop: 4, padding: '6px 10px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', borderLeft: '2px solid var(--dental-teal)' }}>
+                            📝 {pat.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Toplam Sipariş: <strong>{patOrders.length}</strong></span>
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-primary btn-dental-sm"
+                          onClick={() => setIsOrderModalOpen(true)}
+                        >
+                          + Yeni İş Emri Başlat
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

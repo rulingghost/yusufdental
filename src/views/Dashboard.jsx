@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
 import {
@@ -7,12 +7,22 @@ import {
   CheckCircle,
   Building,
   ArrowRight,
-  Printer
+  Printer,
+  ChevronDown,
+  ChevronUp,
+  Calendar,
+  User,
+  ExternalLink
 } from 'lucide-react';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { orders, companies, doctors, patients, materials, technicians, searchQuery, setIsOrderModalOpen } = useDental();
+  const [expandedRecentId, setExpandedRecentId] = useState(null);
+
+  const toggleExpandRecent = (id) => {
+    setExpandedRecentId(prev => prev === id ? null : id);
+  };
 
   const activeOrders = orders.filter(o => o.status === 'in_progress');
   const completedOrders = orders.filter(o => o.status === 'completed');
@@ -240,67 +250,116 @@ export const Dashboard = () => {
                 const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
                 const totalSteps = (o.steps || []).length || 1;
                 const pct = Math.round((completedSteps / totalSteps) * 100);
+                const isExpanded = expandedRecentId === o.id;
 
                 return (
-                  <tr key={o.id}>
-                    <td>
-                      <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--dental-blue)' }}>
-                        {o.id}
-                      </span>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{o.orderDate}</div>
-                    </td>
-                    <td>
-                      <strong>{pat?.name || '-'}</strong>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pat?.chartNumber}</div>
-                    </td>
-                    <td>
-                      <div>{doc?.name || '-'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{comp?.name || '-'}</div>
-                    </td>
-                    <td>
-                      <span className={`badge-pill ${mat.badgeClass}`}>{mat.name.split('(')[0]}</span>
-                      <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
-                        {o.shade}
-                      </span>
-                      <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', marginTop: 4 }}>
-                        Dişler: {(o.teeth || []).join(', ')}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <div style={{ flex: 1, height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                  <React.Fragment key={o.id}>
+                    <tr
+                      onClick={() => toggleExpandRecent(o.id)}
+                      style={{ cursor: 'pointer', background: isExpanded ? 'rgba(2, 132, 199, 0.04)' : 'inherit' }}
+                      title="Detayları açmak / kapatmak için tıklayın"
+                    >
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                          </span>
+                          <div>
+                            <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--dental-blue)' }}>
+                              {o.id}
+                            </span>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{o.orderDate}</div>
+                          </div>
                         </div>
-                        <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono' }}>%{pct}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{o.deliveryDate}</div>
-                      <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
-                    </td>
-                    <td>
-                      <span className={`badge-pill badge-${o.status}`}>
-                        {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn-dental btn-dental-secondary btn-dental-sm"
-                        onClick={() => navigate('/orders/' + o.id)}
-                      >
-                        Aşamalar ➔
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>
+                        <strong>{pat?.name || '-'}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pat?.chartNumber}</div>
+                      </td>
+                      <td>
+                        <div>{doc?.name || '-'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{comp?.name || '-'}</div>
+                      </td>
+                      <td>
+                        <span className={`badge-pill ${mat.badgeClass}`}>{mat.name.split('(')[0]}</span>
+                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
+                          {o.shade}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                          <div style={{ flex: 1, height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono' }}>%{pct}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{o.deliveryDate}</div>
+                        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
+                      </td>
+                      <td>
+                        <span className={`badge-pill badge-${o.status}`}>
+                          {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-secondary btn-dental-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/orders/' + o.id);
+                          }}
+                        >
+                          Aşamalar ➔
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* Tıklanınca Açılan Satır Detay Çekmecesi */}
+                    {isExpanded && (
+                      <tr className="table-expanded-row">
+                        <td colSpan={8} className="table-expanded-content">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+                            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: '0.82rem' }}>
+                              <div>
+                                <span style={{ color: 'var(--text-secondary)' }}>🦷 FDI Dişler: </span>
+                                <strong style={{ fontFamily: 'JetBrains Mono' }}>{(o.teeth || []).join(', ') || 'Tüm Çene'}</strong>
+                              </div>
+                              <div>
+                                <span style={{ color: 'var(--text-secondary)' }}>👷 Anlık Teknisyen: </span>
+                                <strong>{cur?.technician || 'Atanmamış'}</strong>
+                              </div>
+                              {o.notes && (
+                                <div>
+                                  <span style={{ color: 'var(--text-secondary)' }}>📝 Sipariş Notu: </span>
+                                  <span>{o.notes}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="btn-dental btn-dental-primary btn-dental-sm"
+                              onClick={() => navigate('/orders/' + o.id)}
+                            >
+                              <span>İş Emri Detayına & Odontograma Git</span>
+                              <ExternalLink size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
 
-        {/* Mobil Kart Görünümü (Telefonlarda Tablo Yerine Açılır) */}
+        {/* Mobil Kart Görünümü (Telefonlarda Tıklanınca Açılan Akordiyon Kartlar) */}
         <div className="mobile-order-cards">
           {recentOrders.slice(0, 5).map(o => {
             const pat = patients.find(p => p.id === o.patientId);
@@ -311,14 +370,21 @@ export const Dashboard = () => {
             const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
             const totalSteps = (o.steps || []).length || 1;
             const pct = Math.round((completedSteps / totalSteps) * 100);
+            const isExpanded = expandedRecentId === o.id;
 
             return (
-              <div key={o.id} className="mobile-order-item" onClick={() => navigate('/orders/' + o.id)}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--dental-blue)', fontSize: '0.85rem' }}>
-                    #{o.id}
-                  </span>
-                  <div style={{ display: 'flex', gap: 6 }}>
+              <div
+                key={o.id}
+                className={`mobile-order-item ${isExpanded ? 'is-expanded' : ''}`}
+                style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                onClick={() => toggleExpandRecent(o.id)}
+                title="Detayları açmak için tıklayın"
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--dental-blue)', fontSize: '0.85rem' }}>
+                      #{o.id}
+                    </span>
                     {o.priority === 'urgent' && (
                       <span className="badge-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem' }}>
                         🔴 Acil
@@ -328,54 +394,56 @@ export const Dashboard = () => {
                       {o.status === 'in_progress' ? 'İşlemde' : 'Tamamlandı'}
                     </span>
                   </div>
+                  <div className="card-expand-indicator">
+                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </div>
                 </div>
 
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 2 }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   {pat?.name || 'İsimsiz Hasta'}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  🏥 {comp?.name || '-'} {doc?.name ? `(${doc.name})` : ''}
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>🏥 {comp?.name || '-'}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--dental-blue)' }}>%{pct} ({cur?.name})</span>
                 </div>
 
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
-                    🦷 {(o.teeth || []).join(', ') || '-'}
-                  </span>
-                  <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
-                    🎨 {o.shade}
-                  </span>
-                  <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
-                    {mat.name.split('(')[0]}
-                  </span>
+                {/* İnce İlerleme Çubuğu */}
+                <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden', marginTop: 6 }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
                 </div>
 
-                {/* İlerleme Çubuğu */}
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginBottom: 3 }}>
-                    <span style={{ fontWeight: 700, color: 'var(--dental-blue)' }}>{cur?.name || 'Aşama'}</span>
-                    <span style={{ fontFamily: 'JetBrains Mono' }}>%{pct}</span>
+                {/* Tıklanınca Açılan Mobil Detay Çekmecesi */}
+                {isExpanded && (
+                  <div className="job-card-details-drawer" onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
+                        🦷 {(o.teeth || []).join(', ') || '-'}
+                      </span>
+                      <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
+                        🎨 {o.shade}
+                      </span>
+                      <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
+                        {mat.name.split('(')[0]}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+                      <div>👨‍⚕️ Hekim: <strong>{doc?.name || '-'}</strong></div>
+                      <div>📅 Teslim: <strong>{o.deliveryDate}</strong></div>
+                      {o.notes && <div>📝 Not: <em>{o.notes}</em></div>}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-dental btn-dental-primary btn-dental-sm"
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      onClick={() => navigate('/orders/' + o.id)}
+                    >
+                      <span>Aşama Takibi & Detay Sayfasına Git</span>
+                      <ArrowRight size={13} />
+                    </button>
                   </div>
-                  <div style={{ height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                    📅 Teslim: <strong>{o.deliveryDate}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    className="btn-dental btn-dental-secondary btn-dental-sm"
-                    style={{ padding: '4px 10px', fontSize: '0.75rem' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/orders/' + o.id);
-                    }}
-                  >
-                    Detay ➔
-                  </button>
-                </div>
+                )}
               </div>
             );
           })}

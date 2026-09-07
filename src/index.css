@@ -604,6 +604,83 @@ a {
 .job-card[data-priority="vip"]::before { background-color: #d97706; }
 
 /* ==========================================================================
+   Tıklanabilir & Genişleyebilir Kartlar (Click-to-Expand System)
+   ========================================================================== */
+.job-card {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--border-subtle);
+}
+
+.job-card.is-expanded {
+  border-color: var(--dental-blue);
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.12);
+}
+
+.card-expand-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.job-card:hover .card-expand-indicator {
+  color: var(--dental-blue);
+}
+
+.job-card-details-drawer {
+  animation: slideDownFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-toggle-pill {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.card-toggle-pill:hover {
+  border-color: var(--dental-blue);
+  color: var(--dental-blue);
+  background: rgba(2, 132, 199, 0.06);
+}
+
+/* Tablo Satırı Genişleme Çekmecesi */
+.table-expanded-row {
+  background: var(--bg-surface-elevated) !important;
+  animation: slideDownFade 0.2s ease forwards;
+}
+
+.table-expanded-content {
+  padding: 14px 18px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+/* ==========================================================================
    Tablolar
    ========================================================================== */
 .dental-table-wrapper {

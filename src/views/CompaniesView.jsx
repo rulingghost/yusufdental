@@ -13,7 +13,10 @@ import {
   Package,
   Check,
   Building,
-  UserPlus
+  UserPlus,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown
 } from 'lucide-react';
 
 export const CompaniesView = () => {
@@ -29,6 +32,16 @@ export const CompaniesView = () => {
     searchQuery,
     showToast
   } = useDental();
+
+  const [expandedCompanyIds, setExpandedCompanyIds] = useState({});
+
+  const toggleExpandCompany = (id, e) => {
+    if (e) e.stopPropagation();
+    setExpandedCompanyIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   // Firma Ekleme / Hızlı Düzenleme Modalı
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
@@ -189,42 +202,49 @@ export const CompaniesView = () => {
             const compDocs = doctors.filter(d => d.companyId === comp.id);
             const compOrders = orders.filter(o => o.companyId === comp.id);
 
+            const isExpanded = !!expandedCompanyIds[comp.id];
+
             return (
               <div
                 key={comp.id}
-                className="dental-card"
+                className={`dental-card ${isExpanded ? 'is-expanded' : ''}`}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   borderTop: '4px solid var(--dental-blue)',
-                  position: 'relative'
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  padding: isExpanded ? '18px' : '14px 18px'
                 }}
+                onClick={(e) => toggleExpandCompany(comp.id, e)}
+                title="Detayları açmak / kapatmak için tıklayın"
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {comp.name}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
                         Yetkili: {comp.contactPerson || '-'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
+
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                       <button
                         type="button"
                         className="btn-dental btn-dental-secondary btn-dental-sm"
-                        style={{ padding: '6px 8px' }}
+                        style={{ padding: '5px 7px' }}
                         onClick={(e) => handleOpenEditCompany(comp, e)}
                         title="Klinik Bilgilerini Düzenle"
                       >
-                        <Edit3 size={14} />
+                        <Edit3 size={13} />
                       </button>
                       <button
                         type="button"
                         className="btn-dental btn-dental-danger btn-dental-sm"
-                        style={{ padding: '6px 8px' }}
+                        style={{ padding: '5px 7px' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (window.confirm(`${comp.name} ve bağlı kayıtlar silinsin mi?`)) {
@@ -233,72 +253,86 @@ export const CompaniesView = () => {
                         }}
                         title="Sil"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Phone size={14} color="var(--dental-blue)" />
-                      <span>{comp.phone || '-'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Mail size={14} color="var(--dental-blue)" />
-                      <span>{comp.email || '-'}</span>
-                    </div>
-                    {comp.address && (
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 2, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        <MapPin size={14} style={{ flexShrink: 0, marginTop: 2 }} color="var(--dental-blue)" />
-                        <span>{comp.address}</span>
+                      <div className="card-expand-indicator" style={{ marginLeft: 4 }}>
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Bağlı Hekimler Hızlı Önizleme */}
-                  <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--dental-teal)', textTransform: 'uppercase', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Bağlı Hekimler ({compDocs.length})</span>
-                      <span style={{ color: 'var(--text-muted)' }}>Doğrudan Yönetilebilir</span>
                     </div>
-                    {compDocs.length === 0 ? (
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bu kliniğe kayıtlı hekim yok</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {compDocs.slice(0, 3).map(d => (
-                          <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                            <span style={{ fontWeight: 600 }}>👨‍⚕️ {d.name}</span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{d.specialty?.split(' ')[0]}</span>
-                          </div>
-                        ))}
-                        {compDocs.length > 3 && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--dental-blue)', fontWeight: 600 }}>
-                            +{compDocs.length - 3} hekim daha...
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
-                </div>
 
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, fontSize: '0.82rem' }}>
-                    <span>📦 <strong>{compOrders.length}</strong> Sipariş</span>
-                    <span style={{ fontWeight: 800, color: 'var(--dental-blue)', fontFamily: 'JetBrains Mono', fontSize: '0.95rem' }}>
+                  {/* Kompakt Satır: Sipariş Sayısı, Doktor Sayısı ve Bakiye */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontSize: '0.72rem' }}>
+                        📦 {compOrders.length} Sipariş
+                      </span>
+                      <span className="badge-pill" style={{ background: 'rgba(2, 132, 199, 0.08)', color: 'var(--dental-blue)', fontSize: '0.72rem' }}>
+                        👨‍⚕️ {compDocs.length} Hekim
+                      </span>
+                    </div>
+
+                    <span style={{ fontWeight: 800, color: 'var(--dental-blue)', fontFamily: 'JetBrains Mono', fontSize: '0.92rem' }}>
                       {(comp.balance || 0).toLocaleString('tr-TR')} ₺
                     </span>
                   </div>
 
-                  {/* Kapsamlı Yönetim Butonu */}
-                  <button
-                    type="button"
-                    className="btn-dental btn-dental-primary btn-dental-sm"
-                    style={{ width: '100%' }}
-                    onClick={() => handleOpenManageCompany(comp)}
-                  >
-                    <Stethoscope size={15} />
-                    <span>Bağlı Doktorları & Kliniği Yönet</span>
-                  </button>
+                  {/* TIKLANINCA AÇILAN DETAYLAR */}
+                  {isExpanded && (
+                    <div className="job-card-details-drawer" onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Phone size={13} color="var(--dental-blue)" />
+                          <span>{comp.phone || '-'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Mail size={13} color="var(--dental-blue)" />
+                          <span>{comp.email || '-'}</span>
+                        </div>
+                        {comp.address && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 2, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            <MapPin size={13} style={{ flexShrink: 0, marginTop: 2 }} color="var(--dental-blue)" />
+                            <span>{comp.address}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bağlı Hekimler Hızlı Önizleme */}
+                      <div style={{ marginTop: 10, padding: '8px 10px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--dental-teal)', textTransform: 'uppercase', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Bağlı Hekimler ({compDocs.length})</span>
+                        </div>
+                        {compDocs.length === 0 ? (
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Bu kliniğe kayıtlı hekim yok</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {compDocs.slice(0, 4).map(d => (
+                              <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                                <span style={{ fontWeight: 600 }}>👨‍⚕️ {d.name}</span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{d.specialty?.split(' ')[0]}</span>
+                              </div>
+                            ))}
+                            {compDocs.length > 4 && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--dental-blue)', fontWeight: 600 }}>
+                                +{compDocs.length - 4} hekim daha...
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Kapsamlı Yönetim Butonu */}
+                      <button
+                        type="button"
+                        className="btn-dental btn-dental-primary btn-dental-sm"
+                        style={{ width: '100%', marginTop: 12, justifyContent: 'center' }}
+                        onClick={() => handleOpenManageCompany(comp)}
+                      >
+                        <Stethoscope size={14} />
+                        <span>Bağlı Doktorları & Kliniği Yönet</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
-import { Plus, Printer, Trash2, RotateCcw, CheckCircle2, Factory } from 'lucide-react';
+import { Plus, Printer, Trash2, RotateCcw, CheckCircle2, Factory, ChevronDown, ChevronUp, ExternalLink, ArrowRight } from 'lucide-react';
 import { PrintSlip } from '../components/PrintSlip';
 
 export const OrdersView = () => {
@@ -10,9 +10,13 @@ export const OrdersView = () => {
 
   // 'active' (Üretim aşamasındakiler) vs 'completed' (Tamamlananlar bölümü)
   const [tabMode, setTabMode] = useState('active');
-
   const [filterMaterial, setFilterMaterial] = useState('');
   const [printingOrder, setPrintingOrder] = useState(null);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+
+  const toggleExpandOrder = (id) => {
+    setExpandedOrderId(prev => prev === id ? null : id);
+  };
 
   const activeOrdersCount = orders.filter(o => o.status !== 'completed').length;
   const completedOrdersCount = orders.filter(o => o.status === 'completed').length;
@@ -158,100 +162,146 @@ export const OrdersView = () => {
                   const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
                   const totalSteps = (o.steps || []).length || 1;
                   const pct = Math.round((completedSteps / totalSteps) * 100);
+                  const isExpanded = expandedOrderId === o.id;
 
                   return (
-                    <tr key={o.id}>
-                      <td>
-                        <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--dental-blue)' }}>
-                          {o.id}
-                        </span>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{o.orderDate}</div>
-                      </td>
-                      <td>
-                        <strong>{pat?.name || '-'}</strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pat?.chartNumber}</div>
-                      </td>
-                      <td>
-                        <div>{doc?.name || '-'}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{comp?.name || '-'}</div>
-                      </td>
-                      <td>
-                        <span className={`badge-pill ${mat.badgeClass}`}>{mat.name.split('(')[0]}</span>
-                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
-                          {o.shade}
-                        </span>
-                        <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', marginTop: 4 }}>
-                          Dişler: {(o.teeth || []).join(', ')}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                          <div style={{ flex: 1, height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                    <React.Fragment key={o.id}>
+                      <tr
+                        onClick={() => toggleExpandOrder(o.id)}
+                        style={{ cursor: 'pointer', background: isExpanded ? 'rgba(2, 132, 199, 0.04)' : 'inherit' }}
+                        title="Detayları açmak / kapatmak için tıklayın"
+                      >
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                            </span>
+                            <div>
+                              <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--dental-blue)' }}>
+                                {o.id}
+                              </span>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{o.orderDate}</div>
+                            </div>
                           </div>
-                          <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono' }}>%{pct}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{o.deliveryDate}</div>
-                        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
-                      </td>
-                      <td>
-                        <span className={`badge-pill badge-${o.status}`}>
-                          {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {o.status === 'completed' ? (
-                            <button
-                              type="button"
-                              className="btn-dental btn-dental-primary btn-dental-sm"
-                              style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
-                              onClick={() => handleRestart(o.id)}
-                              title="İşlemi Yeniden Başlat & Üretime Geri Al"
-                            >
-                              <RotateCcw size={14} />
-                              <span>Yeniden Başlat</span>
-                            </button>
-                          ) : (
+                        </td>
+                        <td>
+                          <strong>{pat?.name || '-'}</strong>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pat?.chartNumber}</div>
+                        </td>
+                        <td>
+                          <div>{doc?.name || '-'}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{comp?.name || '-'}</div>
+                        </td>
+                        <td>
+                          <span className={`badge-pill ${mat.badgeClass}`}>{mat.name.split('(')[0]}</span>
+                          <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
+                            {o.shade}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                            <div style={{ flex: 1, height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono' }}>%{pct}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{o.deliveryDate}</div>
+                          <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
+                        </td>
+                        <td>
+                          <span className={`badge-pill badge-${o.status}`}>
+                            {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                            {o.status === 'completed' ? (
+                              <button
+                                type="button"
+                                className="btn-dental btn-dental-primary btn-dental-sm"
+                                style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
+                                onClick={() => handleRestart(o.id)}
+                                title="İşlemi Yeniden Başlat & Üretime Geri Al"
+                              >
+                                <RotateCcw size={14} />
+                                <span>Yeniden Başlat</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn-dental btn-dental-secondary btn-dental-sm"
+                                onClick={() => navigate('/orders/' + o.id)}
+                                title="Aşama Takibi & Detay"
+                              >
+                                Aşamalar ➔
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               className="btn-dental btn-dental-secondary btn-dental-sm"
-                              onClick={() => navigate('/orders/' + o.id)}
-                              title="Aşama Takibi & Detay"
+                              style={{ padding: '6px 8px' }}
+                              onClick={() => handlePrint(o)}
+                              title="Laboratuvar Fişi Yazdır"
                             >
-                              Aşamalar ➔
+                              <Printer size={15} />
                             </button>
-                          )}
 
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-secondary btn-dental-sm"
-                            style={{ padding: '6px 8px' }}
-                            onClick={() => handlePrint(o)}
-                            title="Laboratuvar Fişi Yazdır"
-                          >
-                            <Printer size={15} />
-                          </button>
+                            <button
+                              type="button"
+                              className="btn-dental btn-dental-danger btn-dental-sm"
+                              style={{ padding: '6px 8px' }}
+                              onClick={() => {
+                                if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
+                                  deleteOrder(o.id);
+                                }
+                              }}
+                              title="Sil"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
 
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-danger btn-dental-sm"
-                            style={{ padding: '6px 8px' }}
-                            onClick={() => {
-                              if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
-                                deleteOrder(o.id);
-                              }
-                            }}
-                            title="Sil"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      {/* Tıklanınca Açılan Satır Detayı */}
+                      {isExpanded && (
+                        <tr className="table-expanded-row">
+                          <td colSpan={8} className="table-expanded-content">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+                              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: '0.82rem' }}>
+                                <div>
+                                  <span style={{ color: 'var(--text-secondary)' }}>🦷 FDI Dişler: </span>
+                                  <strong style={{ fontFamily: 'JetBrains Mono' }}>{(o.teeth || []).join(', ') || 'Tüm Çene'}</strong>
+                                </div>
+                                <div>
+                                  <span style={{ color: 'var(--text-secondary)' }}>👷 Anlık Teknisyen: </span>
+                                  <strong>{cur?.technician || 'Atanmamış'}</strong>
+                                </div>
+                                {o.notes && (
+                                  <div>
+                                    <span style={{ color: 'var(--text-secondary)' }}>📝 Sipariş Notu: </span>
+                                    <span>{o.notes}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                className="btn-dental btn-dental-primary btn-dental-sm"
+                                onClick={() => navigate('/orders/' + o.id)}
+                              >
+                                <span>İş Emri Detayına & Odontograma Git</span>
+                                <ExternalLink size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })
               )}
@@ -259,7 +309,7 @@ export const OrdersView = () => {
           </table>
         </div>
 
-        {/* Mobil Kart Görünümü (Telefonlarda Tablo Yerine Açılır) */}
+        {/* Mobil Kart Görünümü (Telefonlarda Tıklanınca Açılan Akordiyon Kartlar) */}
         <div className="mobile-order-cards">
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
@@ -275,14 +325,21 @@ export const OrdersView = () => {
               const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
               const totalSteps = (o.steps || []).length || 1;
               const pct = Math.round((completedSteps / totalSteps) * 100);
+              const isExpanded = expandedOrderId === o.id;
 
               return (
-                <div key={o.id} className="mobile-order-item" onClick={() => navigate('/orders/' + o.id)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--dental-blue)', fontSize: '0.88rem' }}>
-                      #{o.id}
-                    </span>
+                <div
+                  key={o.id}
+                  className={`mobile-order-item ${isExpanded ? 'is-expanded' : ''}`}
+                  style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                  onClick={() => toggleExpandOrder(o.id)}
+                  title="Detayları ve eylemleri açmak için tıklayın"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--dental-blue)', fontSize: '0.85rem' }}>
+                        #{o.id}
+                      </span>
                       {o.priority === 'urgent' && (
                         <span className="badge-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem' }}>
                           🔴 Acil
@@ -292,90 +349,94 @@ export const OrdersView = () => {
                         {o.status === 'in_progress' ? 'İşlemde' : 'Tamamlandı'}
                       </span>
                     </div>
+                    <div className="card-expand-indicator">
+                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
                   </div>
 
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 2 }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                     {pat?.name || 'İsimsiz Hasta'}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    🏥 {comp?.name || '-'} {doc?.name ? `(${doc.name})` : ''}
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>🏥 {comp?.name || '-'}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--dental-blue)' }}>%{pct} ({cur?.name || 'Aşama'})</span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
-                      🦷 {(o.teeth || []).join(', ') || '-'}
-                    </span>
-                    <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
-                      🎨 {o.shade}
-                    </span>
-                    <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
-                      {mat.name.split('(')[0]}
-                    </span>
+                  {/* İnce İlerleme Çubuğu */}
+                  <div style={{ height: 3, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden', marginTop: 6 }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
                   </div>
 
-                  {/* İlerleme Çubuğu */}
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginBottom: 3 }}>
-                      <span style={{ fontWeight: 700, color: 'var(--dental-blue)' }}>{cur?.name || 'Aşama'}</span>
-                      <span style={{ fontFamily: 'JetBrains Mono' }}>%{pct}</span>
-                    </div>
-                    <div style={{ height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
-                    </div>
-                  </div>
+                  {/* Tıklanınca Açılan Mobil Detay Çekmecesi */}
+                  {isExpanded && (
+                    <div className="job-card-details-drawer" onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
+                          🦷 {(o.teeth || []).join(', ') || '-'}
+                        </span>
+                        <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
+                          🎨 {o.shade}
+                        </span>
+                        <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
+                          {mat.name.split('(')[0]}
+                        </span>
+                      </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: 8 }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      📅 Teslim: <strong>{o.deliveryDate}</strong>
-                    </span>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                        <div>👨‍⚕️ Hekim: <strong>{doc?.name || '-'}</strong></div>
+                        <div>📅 Teslim Tarihi: <strong>{o.deliveryDate}</strong></div>
+                        {o.notes && <div>📝 Not: <em>{o.notes}</em></div>}
+                      </div>
 
-                    <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
-                      {o.status === 'completed' ? (
-                        <button
-                          type="button"
-                          className="btn-dental btn-dental-primary btn-dental-sm"
-                          style={{ background: 'linear-gradient(135deg, #0d9488, #0284c7)', fontSize: '0.75rem', padding: '6px 10px' }}
-                          onClick={() => handleRestart(o.id)}
-                        >
-                          <RotateCcw size={13} />
-                          <span>Yeniden Başlat</span>
-                        </button>
-                      ) : (
+                      {/* Eylem Butonları */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
+                        {o.status === 'completed' ? (
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-primary btn-dental-sm"
+                            style={{ flex: 1, background: 'linear-gradient(135deg, #0d9488, #0284c7)', fontSize: '0.75rem', padding: '6px 10px' }}
+                            onClick={() => handleRestart(o.id)}
+                          >
+                            <RotateCcw size={13} />
+                            <span>Yeniden Başlat</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-primary btn-dental-sm"
+                            style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                            onClick={() => navigate('/orders/' + o.id)}
+                          >
+                            <span>Aşamalar ➔</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           className="btn-dental btn-dental-secondary btn-dental-sm"
-                          style={{ fontSize: '0.75rem', padding: '6px 10px' }}
-                          onClick={() => navigate('/orders/' + o.id)}
+                          style={{ padding: '6px 10px' }}
+                          onClick={() => handlePrint(o)}
+                          title="Fiş Yazdır"
                         >
-                          Aşamalar ➔
+                          <Printer size={14} />
                         </button>
-                      )}
 
-                      <button
-                        type="button"
-                        className="btn-dental btn-dental-secondary btn-dental-sm"
-                        style={{ padding: '6px 8px' }}
-                        onClick={() => handlePrint(o)}
-                        title="Yazdır"
-                      >
-                        <Printer size={14} />
-                      </button>
-
-                      <button
-                        type="button"
-                        className="btn-dental btn-dental-danger btn-dental-sm"
-                        style={{ padding: '6px 8px' }}
-                        onClick={() => {
-                          if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
-                            deleteOrder(o.id);
-                          }
-                        }}
-                        title="Sil"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-danger btn-dental-sm"
+                          style={{ padding: '6px 10px' }}
+                          onClick={() => {
+                            if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
+                              deleteOrder(o.id);
+                            }
+                          }}
+                          title="Sil"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })
