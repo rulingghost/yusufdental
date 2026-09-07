@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
 import {
   LayoutDashboard,
@@ -11,10 +11,14 @@ import {
 
 export const MobileBottomNav = () => {
   const { orders, setIsOrderModalOpen } = useDental();
+  const location = useLocation();
   const activeOrdersCount = orders.filter(o => o.status === 'in_progress').length;
+  const clinicsActive = ['/companies', '/doctors', '/patients'].some(
+    (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
 
   return (
-    <nav className="mobile-bottom-nav">
+    <nav className="mobile-bottom-nav" aria-label="Mobil alt menü">
       <NavLink
         to="/"
         end
@@ -28,21 +32,20 @@ export const MobileBottomNav = () => {
         to="/kanban"
         className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
       >
-        <div style={{ position: 'relative' }}>
+        <div className="mobile-nav-icon-wrap">
           <Columns3 size={20} />
           {activeOrdersCount > 0 && (
-            <span className="mobile-nav-badge">{activeOrdersCount}</span>
+            <span className="mobile-nav-badge">{activeOrdersCount > 99 ? '99+' : activeOrdersCount}</span>
           )}
         </div>
         <span>Kanban</span>
       </NavLink>
 
-      {/* Orta Hızlı Sipariş Ekleme Butonu */}
       <button
         type="button"
         className="mobile-nav-add-btn"
         onClick={() => setIsOrderModalOpen(true)}
-        aria-label="Yeni Sipariş Ekle"
+        aria-label="Yeni sipariş ekle"
       >
         <Plus size={24} strokeWidth={2.6} />
       </button>
@@ -57,7 +60,7 @@ export const MobileBottomNav = () => {
 
       <NavLink
         to="/companies"
-        className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}
+        className={() => `mobile-nav-item ${clinicsActive ? 'active' : ''}`}
       >
         <Building2 size={20} />
         <span>Klinikler</span>

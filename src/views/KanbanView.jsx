@@ -250,35 +250,21 @@ export const KanbanView = () => {
   return (
     <div>
       {/* Üst Başlık ve Görünüm Değiştirici */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 14 }}>
+      <div className="page-header">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
-              Üretim İstasyonları (Kanban Panosu)
-            </h2>
-            <span
-              style={{
-                padding: '3px 10px',
-                borderRadius: 999,
-                background: 'rgba(2, 132, 199, 0.1)',
-                color: 'var(--dental-blue)',
-                fontSize: '0.82rem',
-                fontWeight: 700
-              }}
-            >
-              {activeOrders.length} Aktif Üretimde
-            </span>
+          <div className="page-title-row">
+            <h2 className="page-title">Üretim İstasyonları</h2>
+            <span className="page-count-badge">{activeOrders.length} Aktif Üretimde</span>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: 4 }}>
+          <p className="page-subtitle">
             {viewMode === 'active_pipeline'
               ? 'Kartları "Sonraki Aşamaya Geçir" butonuyla veya sürükleyip bırakarak hızlıca bir sonraki istasyona aktarın.'
               : 'Tamamlanan protez işleri arşivi. Dilediğiniz zaman "Yeniden Başlat" ile geri alabilirsiniz.'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {/* Aktif vs Tamamlananlar Sekmesi */}
-          <div style={{ display: 'flex', background: 'var(--bg-surface-elevated)', padding: 4, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+        <div className="page-header-actions">
+          <div className="segmented-tabs">
             <button
               type="button"
               className={`btn-dental btn-dental-sm ${viewMode === 'active_pipeline' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
@@ -295,12 +281,11 @@ export const KanbanView = () => {
               onClick={() => setViewMode('completed_archive')}
             >
               <CheckCircle2 size={15} />
-              <span>Tamamlananlar Arşivi ({completedOrders.length})</span>
+              <span>Tamamlananlar ({completedOrders.length})</span>
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Sadeleştir / Tümünü Aç Butonu */}
+          <div className="page-header-extra-actions desktop-only" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="btn-dental btn-dental-secondary"
@@ -848,7 +833,7 @@ export const KanbanView = () => {
       {/* GÖRÜNÜM 2: TAMAMLANANLAR ARŞİVİ (YENİDEN BAŞLATMA VE DÜZENLEME) */}
       {viewMode === 'completed_archive' && (
         <div>
-          <div style={{ padding: '14px 18px', background: 'var(--status-completed-bg)', border: '1px solid var(--status-completed)', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '14px 18px', background: 'var(--status-completed-bg)', border: '1px solid var(--status-completed)', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={20} color="var(--status-completed)" />
               <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>
@@ -857,7 +842,7 @@ export const KanbanView = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+          <div className="entity-card-grid">
             {completedOrders.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
                 Henüz tamamlanmış iş emri bulunmuyor.
@@ -1039,7 +1024,7 @@ export const KanbanView = () => {
                 </div>
 
                 {/* Sorumlu Teknisyen & Süre */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-grid-2" style={{ marginBottom: 0 }}>
                   <div style={{ padding: '10px 12px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sorumlu Teknisyen:</div>
                     <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>

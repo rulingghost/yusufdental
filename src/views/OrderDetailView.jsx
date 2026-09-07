@@ -130,22 +130,20 @@ export const OrderDetailView = () => {
       </button>
 
       {/* Üst Bilgi Barı */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+      <div className="page-header">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              İş Emri #{order.id}
-            </h2>
+          <div className="page-title-row">
+            <h2 className="page-title">İş Emri #{order.id}</h2>
             <span className={`badge-pill ${material.badgeClass}`} style={{ fontSize: '0.85rem', padding: '4px 12px' }}>
               {material.name}
             </span>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
+          <p className="page-subtitle">
             Sipariş Tarihi: <strong>{order.orderDate}</strong> • Nihai Teslim: <strong style={{ color: 'var(--status-urgent)' }}>{order.deliveryDate}</strong>
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div className="page-header-actions">
           <button
             type="button"
             className="btn-dental btn-dental-secondary"
@@ -223,8 +221,6 @@ export const OrderDetailView = () => {
       <div
         className="dental-card order-detail-meta-grid"
         style={{
-          display: 'grid',
-          gap: 16,
           marginBottom: 24,
           background: 'linear-gradient(135deg, var(--bg-surface), var(--bg-surface-elevated))'
         }}
@@ -306,7 +302,7 @@ export const OrderDetailView = () => {
 
             <form onSubmit={handleSaveOrderEdit}>
               <div className="modal-dialog-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div className="form-grid-2" style={{ marginBottom: 14 }}>
                   <div className="form-item">
                     <label>VITA Diş Rengi *</label>
                     <select
@@ -335,7 +331,7 @@ export const OrderDetailView = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div className="form-grid-2" style={{ marginBottom: 14 }}>
                   <div className="form-item">
                     <label>Prova Tarihi</label>
                     <input

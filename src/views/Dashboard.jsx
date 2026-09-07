@@ -68,19 +68,17 @@ export const Dashboard = () => {
   return (
     <div>
       {/* Başlık ve Hızlı Eylem */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 14 }}>
+      <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Laboratuvar Genel Bakış
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
+          <h2 className="page-title">Laboratuvar Genel Bakış</h2>
+          <p className="page-subtitle">
             Güncel protez üretim hattı, fırın süreçleri ve teslimat takibi
           </p>
         </div>
-        <div>
+        <div className="page-header-actions">
           <button
             type="button"
-            className="btn-dental btn-dental-primary"
+            className="btn-dental btn-dental-primary desktop-only"
             onClick={() => setIsOrderModalOpen(true)}
           >
             + Hızlı İş Emri Başlat
@@ -128,7 +126,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Materyal Dağılımı ve Teknisyen Yükü İki Kolonlu Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, marginBottom: 28 }}>
+      <div className="responsive-split">
         {/* Materyal Dağılımı */}
         <div className="dental-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>

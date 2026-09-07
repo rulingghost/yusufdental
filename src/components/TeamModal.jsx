@@ -113,7 +113,7 @@ export const TeamModal = () => {
               <span>Yeni Teknisyen / Personel Ekle</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div className="form-grid-2" style={{ marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                   Teknisyen Adı Soyadı *

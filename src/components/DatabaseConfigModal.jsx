@@ -151,7 +151,7 @@ export const DatabaseConfigModal = () => {
             <label style={{ fontSize: '0.84rem', fontWeight: 700, marginBottom: 8, display: 'block' }}>
               Veritabanı Sağlayıcısını Seçin:
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-grid-2">
               {/* Supabase Seçeneği */}
               <div
                 onClick={() => setProvider('supabase')}

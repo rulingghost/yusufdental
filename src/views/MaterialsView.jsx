@@ -18,13 +18,13 @@ export const MaterialsView = () => {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-          Dental Materyal & Üretim Aşamaları Rehberi
-        </h2>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
-          Porselen, Zirkonyum, E-Max ve İmplant sistemlerinin detaylı laboratuvar iş akış şablonları
-        </p>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Dental Materyal & Üretim Aşamaları Rehberi</h2>
+          <p className="page-subtitle">
+            Porselen, Zirkonyum, E-Max ve İmplant sistemlerinin detaylı laboratuvar iş akış şablonları
+          </p>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

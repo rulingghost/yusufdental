@@ -53,7 +53,7 @@ export const Navbar = ({ onToggleSidebar }) => {
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Sipariş, hasta, hekim veya klinik ara..."
+            placeholder="Hasta, hekim, klinik veya iş emri ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

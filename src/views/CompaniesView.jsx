@@ -172,27 +172,27 @@ export const CompaniesView = () => {
   return (
     <div>
       {/* Üst Başlık ve Yeni Ekle */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+      <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Müşteri Klinikler & Hekim Yönetimi
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
+          <h2 className="page-title">Müşteri Klinikler & Hekim Yönetimi</h2>
+          <p className="page-subtitle">
             Klinikleri, firmaya bağlı çalışan hekimleri ve cari hesapları doğrudan buradan yönetin
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-dental btn-dental-primary"
-          onClick={handleOpenNewCompany}
-        >
-          <Plus size={18} />
-          <span>Yeni Klinik Ekle</span>
-        </button>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            className="btn-dental btn-dental-primary"
+            onClick={handleOpenNewCompany}
+          >
+            <Plus size={18} />
+            <span>Yeni Klinik Ekle</span>
+          </button>
+        </div>
       </div>
 
       {/* Klinik Kartları Listesi */}
-      <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+      <div className="entity-card-grid">
         {filtered.length === 0 ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 0', color: 'var(--text-muted)' }}>
             Kayıtlı klinik bulunamadı.
@@ -223,7 +223,7 @@ export const CompaniesView = () => {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {comp.name}
                       </div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -673,7 +673,7 @@ export const CompaniesView = () => {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div className="form-grid-2" style={{ marginBottom: 14 }}>
                   <div className="form-item">
                     <label>Yetkili Kişi</label>
                     <input
@@ -696,7 +696,7 @@ export const CompaniesView = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div className="form-grid-2" style={{ marginBottom: 14 }}>
                   <div className="form-item">
                     <label>E-posta</label>
                     <input

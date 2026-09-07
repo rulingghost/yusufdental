@@ -62,21 +62,18 @@ export const OrdersView = () => {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
+      <div className="page-header">
         <div>
-          <h2 style={{ fontSize: '1.65rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            İş Emirleri & Sipariş Takibi
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
+          <h2 className="page-title">İş Emirleri & Sipariş Takibi</h2>
+          <p className="page-subtitle">
             {tabMode === 'active'
               ? 'Yalnızca aktif üretim aşamasındaki işlemler listeleniyor'
               : 'Tamamlanan protezlerin ayrı arşivi (Buradan istediğiniz işi üretime geri çevirebilirsiniz)'}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {/* Sekmeler */}
-          <div style={{ display: 'flex', background: 'var(--bg-surface-elevated)', padding: 4, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+        <div className="page-header-actions">
+          <div className="segmented-tabs">
             <button
               type="button"
               className={`btn-dental btn-dental-sm ${tabMode === 'active' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
@@ -93,13 +90,13 @@ export const OrdersView = () => {
               onClick={() => setTabMode('completed')}
             >
               <CheckCircle2 size={15} />
-              <span>Tamamlananlar Bölümü ({completedOrdersCount})</span>
+              <span>Tamamlananlar ({completedOrdersCount})</span>
             </button>
           </div>
 
           <button
             type="button"
-            className="btn-dental btn-dental-primary"
+            className="btn-dental btn-dental-primary desktop-only"
             onClick={() => setIsOrderModalOpen(true)}
           >
             <Plus size={18} />
@@ -113,7 +110,7 @@ export const OrdersView = () => {
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
           <select
             className="dental-input"
-            style={{ width: 220 }}
+            style={{ width: '100%', maxWidth: 280 }}
             value={filterMaterial}
             onChange={(e) => setFilterMaterial(e.target.value)}
           >

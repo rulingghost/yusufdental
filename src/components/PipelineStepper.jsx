@@ -263,7 +263,7 @@ export const PipelineStepper = ({ order }) => {
                 }}
               >
                 {/* Sol Grup: Küçük Tamamlandı Kutucuğu + Numara & İsim */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 220 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                   {/* KÜÇÜK TAMAMLANDI KUTUCUĞU */}
                   <button
                     type="button"

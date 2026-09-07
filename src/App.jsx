@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { DentalProvider, useDental } from './context/DentalContext';
 import { Sidebar } from './components/Sidebar';
@@ -40,6 +40,19 @@ const ToastNotification = () => {
 
 const AppLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.toggle('sidebar-open', isSidebarOpen);
+    return () => document.body.classList.remove('sidebar-open');
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 1024) setIsSidebarOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   return (
     <div className="app-layout">
