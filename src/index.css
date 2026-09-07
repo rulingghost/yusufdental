@@ -1304,7 +1304,39 @@ a {
     font-size: 0.65rem;
   }
 
-  /* Tablolar Mobil */
+  /* Tablolar & Mobil Kartlar */
+  .desktop-table-container {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .mobile-order-cards {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .mobile-order-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .mobile-order-item:active {
+    background: var(--bg-surface-elevated);
+    border-color: var(--dental-blue);
+  }
+
+  .order-detail-meta-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
   .dental-table th,
   .dental-table td {
     padding: 10px 12px;
@@ -1321,9 +1353,46 @@ a {
   }
 }
 
+@media (max-width: 768px) {
+  /* iOS Input Otomatik Zoom Engelleme (16px kuralı) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Başlıkları Mobilde Orantılı Yap */
+  h2 {
+    font-size: 1.35rem !important;
+  }
+  h3 {
+    font-size: 1.15rem !important;
+  }
+
+  /* Masaüstü Tablolarını Mobilde Gizle, Kartları Göster */
+  .desktop-table-container {
+    display: none !important;
+  }
+
+  .mobile-order-cards {
+    display: flex !important;
+  }
+
+  .order-detail-meta-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Modallar içindeki form ızgaralarını dikey diz */
+  .modal-dialog-body [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 480px) {
   .kpi-row {
     grid-template-columns: 1fr;
+  }
+
+  .order-detail-meta-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .tooth-unit {
@@ -1340,5 +1409,6 @@ a {
     font-size: 0.6rem;
   }
 }
+
 
 

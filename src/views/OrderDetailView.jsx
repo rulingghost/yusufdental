@@ -179,10 +179,9 @@ export const OrderDetailView = () => {
 
       {/* Hasta, Doktor ve Protez Detay Bilgi Kartı */}
       <div
-        className="dental-card"
+        className="dental-card order-detail-meta-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 16,
           marginBottom: 24,
           background: 'linear-gradient(135deg, var(--bg-surface), var(--bg-surface-elevated))'

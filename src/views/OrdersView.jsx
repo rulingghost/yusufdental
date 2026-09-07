@@ -125,136 +125,262 @@ export const OrdersView = () => {
           </span>
         </div>
 
-        <table className="dental-table">
-          <thead>
-            <tr>
-              <th>İş Emri No</th>
-              <th>Hasta Adı</th>
-              <th>Hekim & Klinik</th>
-              <th>Restorasyon / Materyal</th>
-              <th>Aşama & İlerleme</th>
-              <th>Teslim Tarihi</th>
-              <th>Durum</th>
-              <th>İşlemler</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
+        {/* Masaüstü Tablo Görünümü */}
+        <div className="desktop-table-container">
+          <table className="dental-table">
+            <thead>
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                  {tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'}
-                </td>
+                <th>İş Emri No</th>
+                <th>Hasta Adı</th>
+                <th>Hekim & Klinik</th>
+                <th>Restorasyon / Materyal</th>
+                <th>Aşama & İlerleme</th>
+                <th>Teslim Tarihi</th>
+                <th>Durum</th>
+                <th>İşlemler</th>
               </tr>
-            ) : (
-              filtered.map(o => {
-                const pat = patients.find(p => p.id === o.patientId);
-                const doc = doctors.find(d => d.id === o.doctorId);
-                const comp = companies.find(c => c.id === o.companyId);
-                const mat = materials[o.materialId] || { name: o.materialId, badgeClass: 'badge-pending' };
-                const cur = o.steps?.[o.currentStepIndex];
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                    {tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'}
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(o => {
+                  const pat = patients.find(p => p.id === o.patientId);
+                  const doc = doctors.find(d => d.id === o.doctorId);
+                  const comp = companies.find(c => c.id === o.companyId);
+                  const mat = materials[o.materialId] || { name: o.materialId, badgeClass: 'badge-pending' };
+                  const cur = o.steps?.[o.currentStepIndex];
 
-                const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
-                const totalSteps = (o.steps || []).length || 1;
-                const pct = Math.round((completedSteps / totalSteps) * 100);
+                  const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
+                  const totalSteps = (o.steps || []).length || 1;
+                  const pct = Math.round((completedSteps / totalSteps) * 100);
 
-                return (
-                  <tr key={o.id}>
-                    <td>
-                      <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--dental-blue)' }}>
-                        {o.id}
-                      </span>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{o.orderDate}</div>
-                    </td>
-                    <td>
-                      <strong>{pat?.name || '-'}</strong>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pat?.chartNumber}</div>
-                    </td>
-                    <td>
-                      <div>{doc?.name || '-'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{comp?.name || '-'}</div>
-                    </td>
-                    <td>
-                      <span className={`badge-pill ${mat.badgeClass}`}>{mat.name.split('(')[0]}</span>
-                      <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
-                        {o.shade}
-                      </span>
-                      <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', marginTop: 4 }}>
-                        Dişler: {(o.teeth || []).join(', ')}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <div style={{ flex: 1, height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                  return (
+                    <tr key={o.id}>
+                      <td>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 700, color: 'var(--dental-blue)' }}>
+                          {o.id}
+                        </span>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{o.orderDate}</div>
+                      </td>
+                      <td>
+                        <strong>{pat?.name || '-'}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pat?.chartNumber}</div>
+                      </td>
+                      <td>
+                        <div>{doc?.name || '-'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{comp?.name || '-'}</div>
+                      </td>
+                      <td>
+                        <span className={`badge-pill ${mat.badgeClass}`}>{mat.name.split('(')[0]}</span>
+                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
+                          {o.shade}
+                        </span>
+                        <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', marginTop: 4 }}>
+                          Dişler: {(o.teeth || []).join(', ')}
                         </div>
-                        <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono' }}>%{pct}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{o.deliveryDate}</div>
-                      <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
-                    </td>
-                    <td>
-                      <span className={`badge-pill badge-${o.status}`}>
-                        {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {o.status === 'completed' ? (
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-primary btn-dental-sm"
-                            style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
-                            onClick={() => handleRestart(o.id)}
-                            title="İşlemi Yeniden Başlat & Üretime Geri Al"
-                          >
-                            <RotateCcw size={14} />
-                            <span>Yeniden Başlat</span>
-                          </button>
-                        ) : (
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                          <div style={{ flex: 1, height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono' }}>%{pct}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{o.deliveryDate}</div>
+                        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
+                      </td>
+                      <td>
+                        <span className={`badge-pill badge-${o.status}`}>
+                          {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {o.status === 'completed' ? (
+                            <button
+                              type="button"
+                              className="btn-dental btn-dental-primary btn-dental-sm"
+                              style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
+                              onClick={() => handleRestart(o.id)}
+                              title="İşlemi Yeniden Başlat & Üretime Geri Al"
+                            >
+                              <RotateCcw size={14} />
+                              <span>Yeniden Başlat</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-dental btn-dental-secondary btn-dental-sm"
+                              onClick={() => navigate('/orders/' + o.id)}
+                              title="Aşama Takibi & Detay"
+                            >
+                              Aşamalar ➔
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             className="btn-dental btn-dental-secondary btn-dental-sm"
-                            onClick={() => navigate('/orders/' + o.id)}
-                            title="Aşama Takibi & Detay"
+                            style={{ padding: '6px 8px' }}
+                            onClick={() => handlePrint(o)}
+                            title="Laboratuvar Fişi Yazdır"
                           >
-                            Aşamalar ➔
+                            <Printer size={15} />
                           </button>
-                        )}
 
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-danger btn-dental-sm"
+                            style={{ padding: '6px 8px' }}
+                            onClick={() => {
+                              if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
+                                deleteOrder(o.id);
+                              }
+                            }}
+                            title="Sil"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobil Kart Görünümü (Telefonlarda Tablo Yerine Açılır) */}
+        <div className="mobile-order-cards">
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
+              {tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'}
+            </div>
+          ) : (
+            filtered.map(o => {
+              const pat = patients.find(p => p.id === o.patientId);
+              const doc = doctors.find(d => d.id === o.doctorId);
+              const comp = companies.find(c => c.id === o.companyId);
+              const mat = materials[o.materialId] || { name: o.materialId, badgeClass: 'badge-pending' };
+              const cur = o.steps?.[o.currentStepIndex];
+              const completedSteps = (o.steps || []).filter(s => s.status === 'completed').length;
+              const totalSteps = (o.steps || []).length || 1;
+              const pct = Math.round((completedSteps / totalSteps) * 100);
+
+              return (
+                <div key={o.id} className="mobile-order-item" onClick={() => navigate('/orders/' + o.id)}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, color: 'var(--dental-blue)', fontSize: '0.88rem' }}>
+                      #{o.id}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      {o.priority === 'urgent' && (
+                        <span className="badge-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem' }}>
+                          🔴 Acil
+                        </span>
+                      )}
+                      <span className={`badge-pill badge-${o.status}`} style={{ fontSize: '0.7rem' }}>
+                        {o.status === 'in_progress' ? 'İşlemde' : 'Tamamlandı'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: 2 }}>
+                    {pat?.name || 'İsimsiz Hasta'}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                    🏥 {comp?.name || '-'} {doc?.name ? `(${doc.name})` : ''}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
+                      🦷 {(o.teeth || []).join(', ') || '-'}
+                    </span>
+                    <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
+                      🎨 {o.shade}
+                    </span>
+                    <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
+                      {mat.name.split('(')[0]}
+                    </span>
+                  </div>
+
+                  {/* İlerleme Çubuğu */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginBottom: 3 }}>
+                      <span style={{ fontWeight: 700, color: 'var(--dental-blue)' }}>{cur?.name || 'Aşama'}</span>
+                      <span style={{ fontFamily: 'JetBrains Mono' }}>%{pct}</span>
+                    </div>
+                    <div style={{ height: 5, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: 8 }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      📅 Teslim: <strong>{o.deliveryDate}</strong>
+                    </span>
+
+                    <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
+                      {o.status === 'completed' ? (
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-primary btn-dental-sm"
+                          style={{ background: 'linear-gradient(135deg, #0d9488, #0284c7)', fontSize: '0.75rem', padding: '6px 10px' }}
+                          onClick={() => handleRestart(o.id)}
+                        >
+                          <RotateCcw size={13} />
+                          <span>Yeniden Başlat</span>
+                        </button>
+                      ) : (
                         <button
                           type="button"
                           className="btn-dental btn-dental-secondary btn-dental-sm"
-                          style={{ padding: '6px 8px' }}
-                          onClick={() => handlePrint(o)}
-                          title="Laboratuvar Fişi Yazdır"
+                          style={{ fontSize: '0.75rem', padding: '6px 10px' }}
+                          onClick={() => navigate('/orders/' + o.id)}
                         >
-                          <Printer size={15} />
+                          Aşamalar ➔
                         </button>
+                      )}
 
-                        <button
-                          type="button"
-                          className="btn-dental btn-dental-danger btn-dental-sm"
-                          style={{ padding: '6px 8px' }}
-                          onClick={() => {
-                            if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
-                              deleteOrder(o.id);
-                            }
-                          }}
-                          title="Sil"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      <button
+                        type="button"
+                        className="btn-dental btn-dental-secondary btn-dental-sm"
+                        style={{ padding: '6px 8px' }}
+                        onClick={() => handlePrint(o)}
+                        title="Yazdır"
+                      >
+                        <Printer size={14} />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-dental btn-dental-danger btn-dental-sm"
+                        style={{ padding: '6px 8px' }}
+                        onClick={() => {
+                          if (window.confirm(`${o.id} numaralı iş emri silinsin mi?`)) {
+                            deleteOrder(o.id);
+                          }
+                        }}
+                        title="Sil"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Yazdırma Alanı */}
