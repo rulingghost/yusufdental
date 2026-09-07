@@ -393,7 +393,7 @@ export const KanbanView = () => {
             <button
               type="button"
               className={`quick-chip-btn ${filterPriority === 'urgent' ? 'active' : ''}`}
-              style={{ color: filterPriority === 'urgent' ? '#fff' : '#dc2626' }}
+              style={{ color: filterPriority === 'urgent' ? '#fff' : 'var(--status-urgent)' }}
               onClick={() => setFilterPriority(filterPriority === 'urgent' ? 'all' : 'urgent')}
             >
               🔴 Sadece Aciller ({activeOrders.filter(o => o.priority === 'urgent').length})
@@ -401,7 +401,7 @@ export const KanbanView = () => {
             <button
               type="button"
               className={`quick-chip-btn ${filterPriority === 'vip' ? 'active' : ''}`}
-              style={{ color: filterPriority === 'vip' ? '#fff' : '#d97706' }}
+              style={{ color: filterPriority === 'vip' ? '#fff' : 'var(--status-revision)' }}
               onClick={() => setFilterPriority(filterPriority === 'vip' ? 'all' : 'vip')}
             >
               ⭐ VIP ({activeOrders.filter(o => o.priority === 'vip').length})
@@ -465,7 +465,7 @@ export const KanbanView = () => {
                 type="button"
                 className="btn-dental btn-dental-secondary btn-dental-sm"
                 onClick={resetFilters}
-                style={{ fontSize: '0.78rem', color: '#dc2626' }}
+                style={{ fontSize: '0.78rem', color: 'var(--status-urgent)' }}
               >
                 <X size={14} />
                 <span>Temizle</span>

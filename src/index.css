@@ -1021,7 +1021,8 @@ a {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
+  min-height: 62px;
+  height: calc(62px + env(safe-area-inset-bottom, 0px));
   background: var(--bg-surface);
   border-top: 1px solid var(--border-subtle);
   backdrop-filter: blur(12px);
@@ -1031,7 +1032,7 @@ a {
   align-items: center;
   padding: 0 8px;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .mobile-nav-item {
@@ -1282,7 +1283,7 @@ a {
   }
 
   .page-body-container {
-    padding: 14px 12px 90px 12px;
+    padding: 14px 12px calc(85px + env(safe-area-inset-bottom, 0px)) 12px;
   }
 
   /* Kanban Mobil Ayarları */
