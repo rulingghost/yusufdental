@@ -23,26 +23,14 @@ const ToastNotification = () => {
   const { toast } = useDental();
   if (!toast) return null;
 
+  const borderLeftColor = toast.type === 'error'
+    ? 'var(--status-urgent)'
+    : (toast.type === 'warning' ? 'var(--status-revision)' : 'var(--dental-blue)');
+
   return (
     <div
-      style={{
-        position: 'fixed',
-        bottom: 24,
-        right: 24,
-        zIndex: 9999,
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderLeft: `4px solid ${toast.type === 'error' ? 'var(--status-urgent)' : (toast.type === 'warning' ? 'var(--status-revision)' : 'var(--dental-blue)')}`,
-        padding: '12px 20px',
-        borderRadius: 'var(--radius-md)',
-        boxShadow: 'var(--shadow-lg)',
-        fontSize: '0.88rem',
-        fontWeight: 600,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        animation: 'popModal 0.2s ease-out'
-      }}
+      className="dental-toast-notification"
+      style={{ borderLeftColor }}
     >
       <span>{toast.type === 'error' ? '✕' : (toast.type === 'warning' ? '⚠️' : '✓')}</span>
       <span>{toast.message}</span>
