@@ -222,7 +222,7 @@ export const OrdersView = () => {
                               <button
                                 type="button"
                                 className="btn-dental btn-dental-primary btn-dental-sm"
-                                style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
+                                style={{ padding: '6px 10px', background: 'linear-gradient(135deg, var(--dental-teal), var(--dental-blue))' }}
                                 onClick={() => handleRestart(o.id)}
                                 title="İşlemi Yeniden Başlat & Üretime Geri Al"
                               >
@@ -341,7 +341,7 @@ export const OrdersView = () => {
                         #{o.id}
                       </span>
                       {o.priority === 'urgent' && (
-                        <span className="badge-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem' }}>
+                        <span className="badge-pill" style={{ background: 'var(--status-urgent-bg)', color: 'var(--status-urgent)', fontWeight: 800, fontSize: '0.7rem' }}>
                           🔴 Acil
                         </span>
                       )}
@@ -374,7 +374,7 @@ export const OrdersView = () => {
                         <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
                           🦷 {(o.teeth || []).join(', ') || '-'}
                         </span>
-                        <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
+                        <span className="badge-pill" style={{ background: 'var(--status-completed-bg)', color: 'var(--status-completed)', fontWeight: 700, fontSize: '0.72rem' }}>
                           🎨 {o.shade}
                         </span>
                         <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
@@ -394,7 +394,7 @@ export const OrdersView = () => {
                           <button
                             type="button"
                             className="btn-dental btn-dental-primary btn-dental-sm"
-                            style={{ flex: 1, background: 'linear-gradient(135deg, #0d9488, #0284c7)', fontSize: '0.75rem', padding: '6px 10px' }}
+                            style={{ flex: 1, background: 'linear-gradient(135deg, var(--dental-teal), var(--dental-blue))', fontSize: '0.75rem', padding: '6px 10px' }}
                             onClick={() => handleRestart(o.id)}
                           >
                             <RotateCcw size={13} />

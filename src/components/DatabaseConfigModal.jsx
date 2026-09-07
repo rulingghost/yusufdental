@@ -232,9 +232,9 @@ export const DatabaseConfigModal = () => {
               </div>
 
               {/* Hızlı Kurulum Rehberi */}
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+              <div style={{ background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <strong style={{ fontSize: '0.82rem', color: '#0369a1' }}>
+                  <strong style={{ fontSize: '0.82rem', color: 'var(--dental-blue)' }}>
                     1 Dakikada Ücretsiz Supabase Nasıl Açılır?
                   </strong>
                   <a
@@ -246,7 +246,7 @@ export const DatabaseConfigModal = () => {
                     supabase.com'a Git <ExternalLink size={12} />
                   </a>
                 </div>
-                <ol style={{ fontSize: '0.78rem', color: '#475569', margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
+                <ol style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
                   <li><strong>supabase.com</strong> adresinde ücretsiz bir hesap açıp <strong>"New Project"</strong> deyin.</li>
                   <li>Sol menüdeki <strong>SQL Editor</strong> sekmesine tıklayın.</li>
                   <li>Projenizin kök dizinindeki <code>schema.sql</code> dosyasının içeriğini yapıştırıp <strong>"Run"</strong> butonuna basın (Tüm tablolarınız saniyeler içinde oluşur).</li>
@@ -282,7 +282,7 @@ export const DatabaseConfigModal = () => {
             <button
               type="button"
               className="btn-dental btn-dental-danger btn-dental-sm"
-              style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}
+              style={{ background: 'var(--status-urgent-bg)', color: 'var(--status-urgent)', fontWeight: 700 }}
               onClick={async () => {
                 const ok = window.confirm(
                   'TÜM VERİLER SIFIRLANSIN MI?\n\n' +

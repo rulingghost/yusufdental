@@ -386,7 +386,7 @@ export const Dashboard = () => {
                       #{o.id}
                     </span>
                     {o.priority === 'urgent' && (
-                      <span className="badge-pill" style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem' }}>
+                      <span className="badge-pill" style={{ background: 'var(--status-urgent-bg)', color: 'var(--status-urgent)', fontWeight: 800, fontSize: '0.7rem' }}>
                         🔴 Acil
                       </span>
                     )}
@@ -419,7 +419,7 @@ export const Dashboard = () => {
                       <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
                         🦷 {(o.teeth || []).join(', ') || '-'}
                       </span>
-                      <span className="badge-pill" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: '0.72rem' }}>
+                      <span className="badge-pill" style={{ background: 'var(--status-completed-bg)', color: 'var(--status-completed)', fontWeight: 700, fontSize: '0.72rem' }}>
                         🎨 {o.shade}
                       </span>
                       <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>

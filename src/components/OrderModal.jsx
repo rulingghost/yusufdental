@@ -151,7 +151,7 @@ export const OrderModal = () => {
       <div className="modal-dialog-box" onClick={e => e.stopPropagation()}>
         <div className="modal-dialog-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--status-inprogress-bg)', color: 'var(--dental-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={18} />
             </div>
             <div>

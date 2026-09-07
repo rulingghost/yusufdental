@@ -225,8 +225,8 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
             style={{
               width: '100%',
               justifyContent: 'flex-start',
-              background: isResetting ? '#f1f5f9' : '#fee2e2',
-              color: isResetting ? '#64748b' : '#dc2626',
+              background: isResetting ? 'var(--status-pending-bg)' : 'var(--status-urgent-bg)',
+              color: isResetting ? 'var(--status-pending)' : 'var(--status-urgent)',
               fontWeight: 700,
               cursor: isResetting ? 'not-allowed' : 'pointer'
             }}

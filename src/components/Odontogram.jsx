@@ -181,8 +181,8 @@ export const Odontogram = ({ selectedTeeth = [], onChange = () => {}, readOnly =
                   style={{
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-sm)',
-                    background: '#e0f2fe',
-                    color: '#0284c7',
+                    background: 'var(--status-inprogress-bg)',
+                    color: 'var(--dental-blue)',
                     fontWeight: 700,
                     fontFamily: 'JetBrains Mono',
                     fontSize: '0.78rem'

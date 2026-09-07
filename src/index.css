@@ -63,6 +63,7 @@
   --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.03);
   --shadow-lg: 0 12px 36px rgba(15, 23, 42, 0.09), 0 4px 12px rgba(15, 23, 42, 0.05);
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color-scheme: light;
 }
 
 /* Koyu Dental Safir Tema (Opsiyonel Dark Mode) */
@@ -96,6 +97,17 @@
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+select option {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 /* ==========================================================================
@@ -375,13 +387,14 @@ a {
 }
 
 .btn-dental-danger {
-  background-color: #fee2e2;
-  color: #dc2626;
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  background-color: var(--status-urgent-bg);
+  color: var(--status-urgent);
+  border: 1px solid rgba(220, 38, 38, 0.25);
 }
 
 .btn-dental-danger:hover {
-  background-color: #fca5a5;
+  background-color: rgba(220, 38, 38, 0.2);
+  border-color: var(--status-urgent);
 }
 
 /* ==========================================================================
@@ -509,6 +522,12 @@ a {
   box-shadow: 0 0 10px rgba(2, 132, 199, 0.3);
 }
 
+[data-theme="dark"] .tooth-unit.is-active {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(6, 182, 212, 0.25));
+  border-color: var(--dental-cyan);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
 .tooth-unit svg {
   width: 24px;
   height: 30px;
@@ -520,6 +539,10 @@ a {
   fill: var(--dental-blue);
 }
 
+[data-theme="dark"] .tooth-unit.is-active svg {
+  fill: var(--dental-cyan);
+}
+
 .tooth-unit .tooth-id {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
@@ -529,6 +552,10 @@ a {
 
 .tooth-unit.is-active .tooth-id {
   color: var(--dental-blue);
+}
+
+[data-theme="dark"] .tooth-unit.is-active .tooth-id {
+  color: var(--dental-cyan);
 }
 
 /* ==========================================================================

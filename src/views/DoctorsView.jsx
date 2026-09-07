@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Plus, Trash2, Edit3, Phone, Mail, Stethoscope, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, Phone, Mail, Stethoscope, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const DoctorsView = () => {
   const { doctors, companies, patients, orders, saveDoctor, deleteDoctor, searchQuery } = useDental();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [expandedDoctorIds, setExpandedDoctorIds] = useState({});
+
+  const toggleExpandDoctor = (docId, e) => {
+    if (e) e.stopPropagation();
+    setExpandedDoctorIds(prev => ({
+      ...prev,
+      [docId]: !prev[docId]
+    }));
+  };
 
   const [companyId, setCompanyId] = useState('');
   const [name, setName] = useState('');
@@ -90,23 +99,40 @@ export const DoctorsView = () => {
             const comp = companies.find(c => c.id === doc.companyId);
             const docPatients = patients.filter(p => p.doctorId === doc.id);
             const docOrders = orders.filter(o => o.doctorId === doc.id);
+            const isExpanded = !!expandedDoctorIds[doc.id];
 
             return (
-              <div key={doc.id} className="dental-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div
+                key={doc.id}
+                className={`dental-card ${isExpanded ? 'is-expanded' : ''}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  padding: isExpanded ? '18px' : '14px 18px'
+                }}
+                onClick={(e) => toggleExpandDoctor(doc.id, e)}
+                title="Detayları açmak / kapatmak için tıklayın"
+              >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div>
-                      <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>{doc.name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{doc.name}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--dental-blue)', fontWeight: 700, marginTop: 2 }}>
                         {doc.specialty || 'Diş Hekimi'}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <button
                         type="button"
                         className="btn-dental btn-dental-secondary btn-dental-sm"
                         style={{ padding: '5px 8px' }}
-                        onClick={() => openEditModal(doc)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(doc);
+                        }}
                         title="Hekimi Düzenle"
                       >
                         <Edit3 size={14} />
@@ -115,7 +141,8 @@ export const DoctorsView = () => {
                         type="button"
                         className="btn-dental btn-dental-danger btn-dental-sm"
                         style={{ padding: '5px 8px' }}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (window.confirm(`${doc.name} silinsin mi?`)) {
                             deleteDoctor(doc.id);
                           }
@@ -124,25 +151,70 @@ export const DoctorsView = () => {
                       >
                         <Trash2 size={14} />
                       </button>
+                      <div className="card-expand-indicator" style={{ marginLeft: 4 }}>
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                    <div><strong>Klinik:</strong> {comp?.name || 'Bağımsız'}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Phone size={14} color="var(--text-muted)" />
-                      <span>{doc.phone || '-'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Mail size={14} color="var(--text-muted)" />
-                      <span>{doc.email || '-'}</span>
+                  {/* Kompakt Özet Satırı */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    <span>🏥 {comp?.name || 'Bağımsız'}</span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontSize: '0.72rem' }}>
+                        {docPatients.length} Hasta
+                      </span>
+                      <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontSize: '0.72rem' }}>
+                        {docOrders.length} İş
+                      </span>
                     </div>
                   </div>
-                </div>
 
-                <div style={{ marginTop: 18, paddingTop: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-                  <span>👥 <strong>{docPatients.length}</strong> Hasta</span>
-                  <span>📦 <strong>{docOrders.length}</strong> İş Emri</span>
+                  {/* TIKLANINCA AÇILAN DETAYLAR */}
+                  {isExpanded && (
+                    <div className="job-card-details-drawer" onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+                        <div><strong>🏥 Bağlı Klinik:</strong> {comp?.name || 'Bağımsız'}</div>
+                        
+                        {doc.phone && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Phone size={14} color="var(--dental-blue)" />
+                              <span>{doc.phone}</span>
+                            </div>
+                            <a
+                              href={`tel:${doc.phone}`}
+                              className="btn-dental btn-dental-secondary btn-dental-sm"
+                              style={{ padding: '3px 8px', fontSize: '0.75rem', textDecoration: 'none' }}
+                            >
+                              📞 Hemen Ara
+                            </a>
+                          </div>
+                        )}
+
+                        {doc.email && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Mail size={14} color="var(--dental-blue)" />
+                              <span>{doc.email}</span>
+                            </div>
+                            <a
+                              href={`mailto:${doc.email}`}
+                              className="btn-dental btn-dental-secondary btn-dental-sm"
+                              style={{ padding: '3px 8px', fontSize: '0.75rem', textDecoration: 'none' }}
+                            >
+                              ✉️ E-posta
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        <span>👥 Kayıtlı Hasta: <strong>{docPatients.length}</strong></span>
+                        <span>📦 Toplam İş Emri: <strong>{docOrders.length}</strong></span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -633,9 +633,9 @@ export const KanbanView = () => {
 
                       // Öncelik Rozeti
                       const priorityConfig = {
-                        urgent: { label: '🔴 ACİL', color: '#ef4444', bg: '#fee2e2' },
-                        vip: { label: '⭐ VIP', color: '#d97706', bg: '#fef3c7' },
-                        normal: { label: 'Normal', color: '#0284c7', bg: '#e0f2fe' }
+                        urgent: { label: '🔴 ACİL', color: 'var(--status-urgent)', bg: 'var(--status-urgent-bg)' },
+                        vip: { label: '⭐ VIP', color: 'var(--status-revision)', bg: 'var(--status-revision-bg)' },
+                        normal: { label: 'Normal', color: 'var(--dental-blue)', bg: 'var(--status-inprogress-bg)' }
                       }[order.priority || 'normal'];
 
                       const isExpanded = !!expandedCardIds[order.id];
@@ -848,11 +848,11 @@ export const KanbanView = () => {
       {/* GÖRÜNÜM 2: TAMAMLANANLAR ARŞİVİ (YENİDEN BAŞLATMA VE DÜZENLEME) */}
       {viewMode === 'completed_archive' && (
         <div>
-          <div style={{ padding: '14px 18px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '14px 18px', background: 'var(--status-completed-bg)', border: '1px solid var(--status-completed)', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CheckCircle2 size={20} color="#059669" />
-              <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
-                Tamamlanan protez işleri üretim hattında kalabalık yaratmaması için burada arşivlenir. Kliniğin revizyon veya ilave isteğinde <strong>"İşlemi Yeniden Başlat"</strong> butonuyla hemen üretim hattına geri alabilirsiniz.
+              <CheckCircle2 size={20} color="var(--status-completed)" />
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                Tamamlanan protez işleri üretim hattında kalabalık yaratmaması için burada arşivlenir. Kliniğin revizyon veya ilave isteğinde <strong style={{ color: 'var(--dental-blue)' }}>"İşlemi Yeniden Başlat"</strong> butonuyla hemen üretim hattına geri alabilirsiniz.
               </span>
             </div>
           </div>
@@ -937,7 +937,7 @@ export const KanbanView = () => {
                           <button
                             type="button"
                             className="btn-dental btn-dental-primary btn-dental-sm"
-                            style={{ flex: 1, background: 'linear-gradient(135deg, #0d9488, #0284c7)' }}
+                            style={{ flex: 1, background: 'linear-gradient(135deg, var(--dental-teal), var(--dental-blue))' }}
                             onClick={(e) => handleRestartOrder(order.id, e)}
                             title="Bu işlemi tekrar aktif üretim hattına al"
                           >
@@ -1061,7 +1061,7 @@ export const KanbanView = () => {
                     <span className={`badge-pill ${mat.badgeClass || ''}`} style={{ fontSize: '0.78rem' }}>
                       {mat.name}
                     </span>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '2px 8px', background: '#f0fdf4', color: '#16a34a', borderRadius: 4 }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '2px 8px', background: 'var(--status-completed-bg)', color: 'var(--status-completed)', borderRadius: 4 }}>
                       VITA Renk: {o.shade || 'A2'}
                     </span>
                     <span style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', fontWeight: 700, padding: '2px 8px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 4 }}>
@@ -1072,11 +1072,11 @@ export const KanbanView = () => {
 
                 {/* Hekim / Sipariş Notları */}
                 {o.notes && (
-                  <div style={{ padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 'var(--radius-sm)' }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#92400e', marginBottom: 2 }}>
+                  <div style={{ padding: '10px 12px', background: 'var(--status-revision-bg)', border: '1px solid var(--status-revision)', borderRadius: 'var(--radius-sm)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--status-revision)', marginBottom: 2 }}>
                       ⚠️ Hekim / Sipariş Notu:
                     </div>
-                    <div style={{ fontSize: '0.84rem', color: '#78350f', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: '0.84rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
                       {o.notes}
                     </div>
                   </div>

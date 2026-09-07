@@ -151,7 +151,7 @@ export const OrderDetailView = () => {
             className="btn-dental btn-dental-secondary"
             onClick={handleCopyWhatsApp}
             title="WhatsApp veya mesaja yapıştırmak için tek tıkla kopyala"
-            style={{ borderColor: '#25d366', color: '#16a34a' }}
+            style={{ borderColor: 'rgba(37, 211, 102, 0.4)', color: 'var(--dental-teal)' }}
           >
             <Copy size={16} />
             <span>WhatsApp Özeti Kopyala</span>
@@ -177,20 +177,41 @@ export const OrderDetailView = () => {
 
       {/* EĞER TAMAMLANMIŞSA: YENİDEN BAŞLATMA & ÜRETİME GERİ ALMA BANNERI */}
       {isCompleted && (
-        <div style={{ padding: '16px 20px', background: '#ecfdf5', border: '2px solid #a7f3d0', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{
+          padding: '16px 20px',
+          background: 'var(--status-completed-bg)',
+          border: '1px solid var(--status-completed)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 20,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: '50%',
+              background: 'var(--status-completed)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800
+            }}>
               ✓
             </div>
             <div>
-              <strong style={{ color: '#065f46', fontSize: '1rem', display: 'block' }}>Bu İş Emri Tamamlandı ve Arşivde</strong>
-              <div style={{ fontSize: '0.82rem', color: '#047857' }}>Kliniğin talebiyle renk/uyum düzeltmesi veya revizyon için işlemi tekrar üretim hattına alabilirsiniz.</div>
+              <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', display: 'block' }}>Bu İş Emri Tamamlandı ve Arşivde</strong>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Kliniğin talebiyle renk/uyum düzeltmesi veya revizyon için işlemi tekrar üretim hattına alabilirsiniz.</div>
             </div>
           </div>
           <button
             type="button"
             className="btn-dental btn-dental-primary"
-            style={{ background: 'linear-gradient(135deg, #0d9488, #0284c7)', boxShadow: '0 4px 14px rgba(13, 148, 136, 0.3)' }}
+            style={{ background: 'linear-gradient(135deg, var(--dental-teal), var(--dental-blue))', boxShadow: '0 4px 14px var(--dental-primary-glow)' }}
             onClick={() => handleRestartOrder(Math.max(0, (order.steps || []).length - 2))}
           >
             <span>🔄 İşlemi Yeniden Başlat & Üretime Geri Döndür</span>

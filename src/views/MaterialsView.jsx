@@ -1,9 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Sparkles, Clock, User } from 'lucide-react';
+import { Sparkles, Clock, User, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const MaterialsView = () => {
   const { materials } = useDental();
+  // İlk materyal açık başlasın, diğerleri derli toplu olsun
+  const [expandedMatIds, setExpandedMatIds] = useState(() => ({
+    [Object.keys(materials)[0] || 'porcelain']: true
+  }));
+
+  const toggleExpand = (id) => {
+    setExpandedMatIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   return (
     <div>
@@ -16,81 +27,106 @@ export const MaterialsView = () => {
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {Object.values(materials).map(mat => (
-          <div key={mat.id} className="dental-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '1rem', padding: '6px 14px' }}>
-                  {mat.name}
-                </span>
-                <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                  {mat.steps.length} Üretim Aşaması
-                </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {Object.values(materials).map(mat => {
+          const isExpanded = !!expandedMatIds[mat.id];
+          const totalHours = (mat.steps || []).reduce((acc, s) => acc + (s.estimatedHours || 0), 0);
+
+          return (
+            <div
+              key={mat.id}
+              className={`dental-card ${isExpanded ? 'is-expanded' : ''}`}
+              style={{ cursor: 'pointer', transition: 'all 0.2s ease', padding: isExpanded ? '20px' : '16px 20px' }}
+              onClick={() => toggleExpand(mat.id)}
+              title="Aşamaları görmek / kapatmak için tıklayın"
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.95rem', padding: '5px 12px' }}>
+                    {mat.name}
+                  </span>
+                  <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                    {mat.steps.length} Üretim Aşaması • ~{totalHours} Saat
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="card-toggle-pill">
+                    {isExpanded ? 'Aşamaları Gizle' : 'Aşamaları İncele'}
+                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
-              {mat.description}
-            </p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: 10, marginBottom: isExpanded ? 16 : 0, lineHeight: 1.5 }}>
+                {mat.description}
+              </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {mat.steps.map(step => (
+              {isExpanded && (
                 <div
-                  key={step.order}
-                  style={{
-                    padding: '14px 18px',
-                    background: 'var(--bg-surface-elevated)',
-                    borderRadius: 'var(--radius-md)',
-                    borderLeft: `4px solid ${mat.color}`,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 16,
-                    flexWrap: 'wrap'
-                  }}
+                  className="job-card-details-drawer"
+                  onClick={e => e.stopPropagation()}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {mat.steps.map(step => (
                     <div
+                      key={step.order}
                       style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: 'var(--bg-surface)',
+                        padding: '12px 16px',
+                        background: 'var(--bg-surface-elevated)',
+                        borderRadius: 'var(--radius-md)',
+                        borderLeft: `4px solid ${mat.color}`,
                         display: 'flex',
+                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        fontFamily: 'JetBrains Mono',
-                        color: mat.color,
-                        border: '1px solid var(--border-subtle)'
+                        gap: 16,
+                        flexWrap: 'wrap'
                       }}
                     >
-                      {step.order}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>{step.name}</div>
-                      <div style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                        {step.description}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: '50%',
+                            background: 'var(--bg-surface)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            fontFamily: 'JetBrains Mono',
+                            fontSize: '0.85rem',
+                            color: mat.color,
+                            border: '1px solid var(--border-subtle)'
+                          }}
+                        >
+                          {step.order}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.92rem', fontWeight: 700 }}>{step.name}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                            {step.description}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 14, fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <User size={13} />
+                          <span>{step.defaultTechnician}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <Clock size={13} />
+                          <span>~{step.estimatedHours} saat</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 16, fontSize: '0.8rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <User size={14} />
-                      <span>{step.defaultTechnician}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Clock size={14} />
-                      <span>~{step.estimatedHours} saat</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
