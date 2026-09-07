@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
-import { CheckCircle2, Plus, Trash2, Edit2, X, Check, Clock, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Plus, Trash2, Edit2, X, Check, Clock, ArrowRight, User, Info, ChevronDown } from 'lucide-react';
 
 export const PipelineStepper = ({ order }) => {
   const {
@@ -8,10 +8,14 @@ export const PipelineStepper = ({ order }) => {
     addStepToOrder,
     removeStepFromOrder,
     editStepInOrder,
-    technicians
+    technicians,
+    assignTechnicianToStep,
+    toggleStepCompletion,
+    setIsTeamModalOpen
   } = useDental();
 
   const [localSteps, setLocalSteps] = useState(order.steps || []);
+  const [openInfoIdx, setOpenInfoIdx] = useState(null);
 
   // Yeni Aşama Ekleme State'leri
   const [isAddingStep, setIsAddingStep] = useState(false);
@@ -224,112 +228,165 @@ export const PipelineStepper = ({ order }) => {
         </form>
       )}
 
-      {/* AŞAMALAR LİSTESİ (DÜZENLEME & ÇIKARMA DESTEKLİ) */}
-      <div className="stepper-chain-list">
+      {/* AŞAMALAR LİSTESİ: KÜÇÜK TAMAMLANDI KUTUCUKLARI & İŞLEM HAKKINDA ÇEKMECESİ */}
+      <div className="stepper-compact-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {(order.steps || []).map((step, idx) => {
           const isDone = step.status === 'completed';
           const isInProgress = step.status === 'in_progress';
           const isRevision = step.status === 'revision';
           const curLocal = localSteps[idx] || step;
           const isEditingThisTitle = editingStepIdx === idx;
+          const isInfoOpen = openInfoIdx === idx;
 
           return (
             <div
               key={idx}
-              className={`stepper-row-card ${isDone ? 'is-done' : ''} ${isInProgress ? 'is-active' : ''}`}
+              className={`stepper-compact-card ${isDone ? 'is-done' : ''} ${isInProgress ? 'is-active' : ''}`}
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid',
+                borderColor: isInProgress ? 'var(--dental-blue)' : (isDone ? 'rgba(5, 150, 105, 0.3)' : 'var(--border-subtle)'),
+                borderRadius: 'var(--radius-md)',
+                padding: '10px 14px',
+                transition: 'var(--transition)',
+                boxShadow: isInProgress ? '0 0 0 2px rgba(2, 132, 199, 0.15)' : 'none'
+              }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: 14, alignItems: 'center', flex: 1 }}>
-                  <div
+              {/* ANA SATIR: Küçük Tamamlandı Kutucuğu + Aşama İsmi + Sorumlu + 'İşlem Hakkında' Butonu */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap'
+                }}
+              >
+                {/* Sol Grup: Küçük Tamamlandı Kutucuğu + Numara & İsim */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 220 }}>
+                  {/* KÜÇÜK TAMAMLANDI KUTUCUĞU */}
+                  <button
+                    type="button"
+                    className={`step-compact-checkbox ${isDone ? 'is-checked' : ''}`}
+                    onClick={() => toggleStepCompletion(order.id, idx)}
+                    title={isDone ? 'Tamamlandı (İşlemde yapmak için tıkla)' : 'Tamamlandı olarak işaretle (1 tıkla bitir)'}
                     style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
+                      width: 26,
+                      height: 26,
+                      borderRadius: 6,
+                      border: '2px solid',
+                      borderColor: isDone ? 'var(--status-completed)' : 'var(--border-subtle)',
+                      background: isDone ? 'var(--status-completed)' : 'var(--bg-surface-elevated)',
+                      color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '0.9rem',
-                      background: isDone ? 'var(--status-completed)' : (isInProgress ? 'var(--dental-blue)' : 'var(--bg-surface-elevated)'),
-                      color: isDone || isInProgress ? '#fff' : 'var(--text-secondary)',
-                      border: '2px solid',
-                      borderColor: isDone ? 'var(--status-completed)' : (isInProgress ? 'var(--dental-blue)' : 'var(--border-subtle)'),
-                      flexShrink: 0
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    {isDone ? <CheckCircle2 size={20} /> : step.order}
-                  </div>
+                    {isDone ? <Check size={16} strokeWidth={3} /> : null}
+                  </button>
 
-                  {/* Başlık veya Başlık Düzenleme Alanı */}
-                  <div style={{ flex: 1 }}>
-                    {isEditingThisTitle ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <input
-                          type="text"
-                          className="dental-input"
-                          style={{ fontWeight: 700, fontSize: '0.95rem', padding: '4px 8px' }}
-                          value={editStepTitle}
-                          onChange={e => setEditStepTitle(e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          className="dental-input"
-                          style={{ fontSize: '0.8rem', padding: '4px 8px' }}
-                          value={editStepSubtitle}
-                          onChange={e => setEditStepSubtitle(e.target.value)}
-                          placeholder="Aşama açıklaması..."
-                        />
-                        <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-primary btn-dental-sm"
-                            style={{ padding: '3px 8px', fontSize: '0.75rem' }}
-                            onClick={() => handleSaveStepTitle(idx)}
-                          >
-                            <Check size={12} />
-                            <span>Kaydet</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-secondary btn-dental-sm"
-                            style={{ padding: '3px 8px', fontSize: '0.75rem' }}
-                            onClick={() => setEditingStepIdx(null)}
-                          >
-                            İptal
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>{step.name}</span>
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-secondary"
-                            style={{ padding: '2px 5px', border: 'none', background: 'transparent' }}
-                            onClick={() => openEditStep(step, idx)}
-                            title="Aşama Başlığını Düzenle"
-                          >
-                            <Edit2 size={13} color="var(--text-muted)" />
-                          </button>
-                        </div>
-                        <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                          {step.description}
-                        </div>
-                      </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontSize: '0.78rem',
+                        fontWeight: 800,
+                        color: isDone ? 'var(--status-completed)' : (isInProgress ? 'var(--dental-blue)' : 'var(--text-muted)'),
+                        fontFamily: 'JetBrains Mono'
+                      }}
+                    >
+                      {step.order}.
+                    </span>
+
+                    <span
+                      style={{
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        color: isDone ? 'var(--text-secondary)' : 'var(--text-primary)',
+                        textDecoration: isDone ? 'line-through' : 'none'
+                      }}
+                    >
+                      {step.name}
+                    </span>
+
+                    {/* Durum Rozeti */}
+                    {isDone && (
+                      <span className="badge-pill badge-completed" style={{ fontSize: '0.68rem', padding: '2px 7px' }}>
+                        ✓ Tamamlandı
+                      </span>
+                    )}
+                    {isInProgress && (
+                      <span className="badge-pill badge-inprogress" style={{ fontSize: '0.68rem', padding: '2px 7px' }}>
+                        ⚙️ İşlemde
+                      </span>
+                    )}
+                    {isRevision && (
+                      <span className="badge-pill badge-revision" style={{ fontSize: '0.68rem', padding: '2px 7px' }}>
+                        ⚠️ Revizyon
+                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* Rozet ve Aşamayı Sil Butonu */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className={`badge-pill badge-${step.status}`}>
-                    {isDone && 'Tamamlandı ✓'}
-                    {isInProgress && 'İşlemde ⚙️'}
-                    {isRevision && 'Revizyon ⚠️'}
-                    {step.status === 'pending' && 'Bekliyor'}
-                  </span>
+                {/* Sağ Grup: Sorumlu Teknisyen + 'İşlem Hakkında' Butonu + Sil */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {/* Sorumlu Teknisyen Seçici Dropdown */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      background: 'var(--bg-surface-elevated)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '3px 8px'
+                    }}
+                  >
+                    <User size={12} color="var(--dental-blue)" />
+                    <select
+                      value={step.technician || ''}
+                      onChange={(e) => assignTechnicianToStep(order.id, idx, e.target.value)}
+                      title="Sorumlu Teknisyeni Belirle"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="">Sorumlu Ata...</option>
+                      {technicians.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
 
+                  {/* 'İşlem Hakkında' Açılır Detay Butonu */}
+                  <button
+                    type="button"
+                    className={`btn-dental btn-dental-sm ${isInfoOpen ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
+                    style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+                    onClick={() => setOpenInfoIdx(isInfoOpen ? null : idx)}
+                    title="Aşama açıklaması, talimatlar ve notları gör/düzenle"
+                  >
+                    <Info size={13} />
+                    <span>İşlem Hakkında</span>
+                    <ChevronDown
+                      size={13}
+                      style={{
+                        transform: isInfoOpen ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.2s'
+                      }}
+                    />
+                  </button>
+
+                  {/* Silme Butonu */}
                   <button
                     type="button"
                     className="btn-dental btn-dental-danger btn-dental-sm"
@@ -339,84 +396,148 @@ export const PipelineStepper = ({ order }) => {
                         removeStepFromOrder(order.id, idx);
                       }
                     }}
-                    title="Bu Aşamayı Çıkar / Sil"
+                    title="Bu Aşamayı Çıkar"
                   >
                     <Trash2 size={13} />
                   </button>
                 </div>
               </div>
 
-              {/* Teknisyen ve Durum Düzenleme Paneli */}
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Sorumlu Teknisyen:</label>
-                  <select
-                    className="dental-input"
-                    style={{ width: '100%', fontSize: '0.82rem', padding: '6px 10px' }}
-                    value={curLocal.technician || ''}
-                    onChange={(e) => handleFieldChange(idx, 'technician', e.target.value)}
+              {/* AÇILIR 'İŞLEM HAKKINDA' ÇEKMECESİ */}
+              {isInfoOpen && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    paddingTop: 12,
+                    borderTop: '1px solid var(--border-subtle)',
+                    animation: 'fadeIn 0.2s ease-out'
+                  }}
+                >
+                  {/* Başlık Düzenleme Modu */}
+                  {isEditingThisTitle ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                      <input
+                        type="text"
+                        className="dental-input"
+                        style={{ fontWeight: 700, fontSize: '0.9rem' }}
+                        value={editStepTitle}
+                        onChange={e => setEditStepTitle(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        className="dental-input"
+                        style={{ fontSize: '0.8rem' }}
+                        value={editStepSubtitle}
+                        onChange={e => setEditStepSubtitle(e.target.value)}
+                        placeholder="Aşama açıklaması..."
+                      />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-primary btn-dental-sm"
+                          onClick={() => handleSaveStepTitle(idx)}
+                        >
+                          <Check size={12} />
+                          <span>Kaydet</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-secondary btn-dental-sm"
+                          onClick={() => setEditingStepIdx(null)}
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* 1. Aşama Teknik Açıklaması & Talimatlar */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--dental-blue)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        📋 İstasyon Talimatı & Detay:
+                      </span>
+                      {!isEditingThisTitle && (
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-secondary btn-dental-sm"
+                          style={{ padding: '2px 7px', fontSize: '0.72rem' }}
+                          onClick={() => openEditStep(step, idx)}
+                          title="Aşama Başlığı ve Talimatını Düzenle"
+                        >
+                          <Edit2 size={11} />
+                          <span>Düzenle</span>
+                        </button>
+                      )}
+                    </div>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: '0.84rem',
+                        color: 'var(--text-secondary)',
+                        background: 'var(--bg-surface-elevated)',
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-subtle)',
+                        lineHeight: 1.5
+                      }}
+                    >
+                      {step.description || 'Bu aşama için özel bir klinik talimat girilmemiş.'}
+                    </p>
+                  </div>
+
+                  {/* 2. Teknisyen Notu / Raporu */}
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                      ✍️ Aşama Notu / Raporu:
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        className="dental-input"
+                        style={{ flex: 1, fontSize: '0.82rem', padding: '6px 10px' }}
+                        placeholder="Örn: 920 derecede sinterlendi, çatlak ve pürüz yok..."
+                        value={curLocal.notes || ''}
+                        onChange={(e) => handleFieldChange(idx, 'notes', e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="btn-dental btn-dental-primary btn-dental-sm"
+                        style={{ padding: '6px 12px' }}
+                        onClick={() => handleSaveStep(idx)}
+                      >
+                        Notu Kaydet
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3. Zamanlama Bilgileri */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.74rem',
+                      color: 'var(--text-muted)',
+                      paddingTop: 8,
+                      borderTop: '1px dashed var(--border-subtle)'
+                    }}
                   >
-                    <option value="">Teknisyen Ata...</option>
-                    {technicians.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Durum:</label>
-                  <select
-                    className="dental-input"
-                    style={{ width: '100%', fontSize: '0.82rem', padding: '6px 10px' }}
-                    value={curLocal.status || 'pending'}
-                    onChange={(e) => handleFieldChange(idx, 'status', e.target.value)}
-                  >
-                    <option value="pending">Bekliyor</option>
-                    <option value="in_progress">İşleme Al (İşlemde)</option>
-                    <option value="completed">Tamamlandı</option>
-                    <option value="revision">Revizyon Talebi</option>
-                  </select>
-                </div>
-
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Aşama Notu / Rapor:</label>
-                  <input
-                    type="text"
-                    className="dental-input"
-                    style={{ width: '100%', fontSize: '0.82rem', padding: '6px 10px' }}
-                    placeholder="Örn: 920 derecede sinterlendi, çatlak ve pürüz yok..."
-                    value={curLocal.notes || ''}
-                    onChange={(e) => handleFieldChange(idx, 'notes', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Aksiyon Butonları & Zaman */}
-              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ fontSize: '0.75rem', fontFamily: 'JetBrains Mono', color: 'var(--text-muted)' }}>
-                  {step.completedAt ? `Bitiş: ${step.completedAt}` : (step.startedAt ? `Başlama: ${step.startedAt}` : 'Henüz başlanmadı')}
-                </div>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {!isDone ? (
+                    <span>
+                      {step.completedAt ? `✓ Tamamlanma Zamanı: ${step.completedAt}` : (step.startedAt ? `⚙️ Başlama Zamanı: ${step.startedAt}` : 'Henüz başlanmadı')}
+                    </span>
                     <button
                       type="button"
-                      className="btn-dental btn-dental-primary btn-dental-sm"
-                      onClick={() => handleQuickComplete(idx)}
+                      style={{ background: 'none', border: 'none', color: 'var(--dental-blue)', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => {
+                        if (setIsTeamModalOpen) setIsTeamModalOpen(true);
+                      }}
                     >
-                      Bu Aşamayı Tamamla ✓
+                      👥 Ekip / Teknisyen Ekle-Çıkar
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn-dental btn-dental-secondary btn-dental-sm"
-                      onClick={() => handleSaveStep(idx)}
-                    >
-                      Güncelle
-                    </button>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           );
         })}

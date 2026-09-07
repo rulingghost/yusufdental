@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Search, Plus, Sun, Moon, Menu, Database, X } from 'lucide-react';
+import { Search, Plus, Sun, Moon, Menu, Database, X, Users } from 'lucide-react';
 
 export const Navbar = ({ onToggleSidebar }) => {
   const {
@@ -10,6 +10,8 @@ export const Navbar = ({ onToggleSidebar }) => {
     toggleTheme,
     setIsOrderModalOpen,
     setIsDbModalOpen,
+    setIsTeamModalOpen,
+    technicians,
     dbStatus
   } = useDental();
 
@@ -98,6 +100,19 @@ export const Navbar = ({ onToggleSidebar }) => {
           <Database size={15} color="var(--dental-blue)" />
           <span className="navbar-btn-text">
             {dbStatus === 'connected' ? 'Bulut: Aktif' : 'Bulut'}
+          </span>
+        </button>
+
+        {/* Ekip & Teknisyenler Butonu */}
+        <button
+          type="button"
+          className="btn-dental btn-dental-secondary desktop-only"
+          onClick={() => setIsTeamModalOpen && setIsTeamModalOpen(true)}
+          title="Laboratuvar teknisyenlerini ve ekibi yönet"
+        >
+          <Users size={15} color="var(--dental-blue)" />
+          <span className="navbar-btn-text">
+            Ekip ({technicians ? technicians.length : 0})
           </span>
         </button>
 

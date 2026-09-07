@@ -1523,6 +1523,35 @@ a {
   background: var(--bg-surface-elevated);
 }
 
+/* Küçük Tamamlandı Kutucukları & Kompakt Aşama Kartı */
+.stepper-compact-card {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.stepper-compact-card:hover {
+  border-color: var(--dental-blue);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
+}
+
+.stepper-compact-card.is-active {
+  border-left: 4px solid var(--dental-blue) !important;
+}
+
+.stepper-compact-card.is-done {
+  border-left: 4px solid var(--status-completed) !important;
+}
+
+.step-compact-checkbox:hover {
+  border-color: var(--status-completed) !important;
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18);
+}
+
+.step-compact-checkbox:active {
+  transform: scale(0.95);
+}
+
 @media (max-width: 768px) {
   /* iOS Input Otomatik Zoom Engelleme (16px kuralı) */
   input, select, textarea {

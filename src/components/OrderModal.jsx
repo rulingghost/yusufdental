@@ -12,6 +12,8 @@ export const OrderModal = () => {
     patients,
     materials,
     vitaShades,
+    technicians,
+    setIsTeamModalOpen,
     saveOrder,
     savePatient,
     showToast
@@ -22,6 +24,7 @@ export const OrderModal = () => {
   const [patientId, setPatientId] = useState('');
   const [isNewPatient, setIsNewPatient] = useState(false);
   const [newPatientName, setNewPatientName] = useState('');
+  const [assignedTech, setAssignedTech] = useState('');
 
   const [materialId, setMaterialId] = useState('zirconia');
   const [shade, setShade] = useState('A2');
@@ -116,7 +119,7 @@ export const OrderModal = () => {
       name: s.name,
       description: s.description,
       status: idx === 0 ? 'in_progress' : 'pending',
-      technician: s.defaultTechnician,
+      technician: assignedTech || s.defaultTechnician || (technicians && technicians[0]) || 'Yusuf Usta',
       startedAt: idx === 0 ? new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : null,
       notes: ''
     }));
@@ -320,6 +323,32 @@ export const OrderModal = () => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Sorumlu Teknisyen Seçimi */}
+              <div className="form-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label>Sorumlu Teknisyen</label>
+                  <button
+                    type="button"
+                    style={{ background: 'none', border: 'none', color: 'var(--dental-blue)', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => {
+                      if (setIsTeamModalOpen) setIsTeamModalOpen(true);
+                    }}
+                  >
+                    + Ekip Yönetimi
+                  </button>
+                </div>
+                <select
+                  className="dental-input"
+                  value={assignedTech}
+                  onChange={(e) => setAssignedTech(e.target.value)}
+                >
+                  <option value="">Varsayılan İstasyon Teknisyeni</option>
+                  {(technicians || []).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Teslim Tarihi ve Hızlı Gün Seçicileri */}

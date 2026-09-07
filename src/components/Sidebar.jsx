@@ -13,11 +13,12 @@ import {
   Upload,
   RotateCcw,
   Database,
+  UserCheck,
   X
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
-  const { orders, exportData, importData, clearAllData, setIsDbModalOpen } = useDental();
+  const { orders, exportData, importData, clearAllData, setIsDbModalOpen, setIsTeamModalOpen, technicians } = useDental();
   const fileInputRef = useRef(null);
 
   const activeOrdersCount = orders.filter(o => o.status === 'in_progress').length;
@@ -142,6 +143,22 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
             <Users size={18} />
             <span>Hastalar & Arşiv</span>
           </NavLink>
+        </li>
+        <li className="nav-heading">Laboratuvar Ekibi</li>
+        <li>
+          <button
+            type="button"
+            onClick={() => {
+              if (setIsTeamModalOpen) setIsTeamModalOpen(true);
+              handleNavClick();
+            }}
+            className="nav-item-btn"
+            style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+          >
+            <UserCheck size={18} />
+            <span>Teknisyenler & Ekip</span>
+            <span className="nav-badge-count">{technicians ? technicians.length : 0}</span>
+          </button>
         </li>
 
         <li className="nav-heading">Teknik Rehber</li>

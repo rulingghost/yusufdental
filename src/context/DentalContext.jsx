@@ -100,13 +100,16 @@ export const VITA_SHADES = [
   'BL1 (Bleach)', 'BL2 (Bleach)', 'BL3 (Bleach)', 'BL4 (Bleach)'
 ];
 
-export const TECHNICIANS = [
-  'Yusuf Usta (Baş Teknisyen / Seramist)',
-  'Murat Teknisyen (CAD/CAM Sorumlusu)',
-  'Ali Usta (Metal & Altyapı Uzmanı)',
-  'Ayşe Teknisyen (Alçı & Model Sorumlusu)',
-  'Elif Teknisyen (Glaze & Polisaj Uzmanı)'
+export const TECHNICIANS_STORAGE_KEY = 'dentallab_technicians_v2';
+export const DEFAULT_TECHNICIANS = [
+  { id: 'tech-1', name: 'Yusuf Usta', role: 'Baş Teknisyen / Seramist' },
+  { id: 'tech-2', name: 'Murat Teknisyen', role: 'CAD/CAM Sorumlusu' },
+  { id: 'tech-3', name: 'Ali Usta', role: 'Metal & Altyapı Uzmanı' },
+  { id: 'tech-4', name: 'Ayşe Teknisyen', role: 'Alçı & Model Sorumlusu' },
+  { id: 'tech-5', name: 'Elif Teknisyen', role: 'Glaze & Polisaj Uzmanı' }
 ];
+
+export const TECHNICIANS = DEFAULT_TECHNICIANS.map(t => t.name);
 
 // TEMİZ BAŞLANGIÇ: ÖRNEK VERİLER TAMAMEN KALDIRILDI!
 const EMPTY_INITIAL_DATA = {
@@ -172,6 +175,25 @@ export const DentalProvider = ({ children }) => {
   const [toast, setToast] = useState(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // Dinamik Teknisyen / Ekip Yönetimi
+  const [techniciansList, setTechniciansList] = useState(() => {
+    try {
+      const saved = localStorage.getItem(TECHNICIANS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return DEFAULT_TECHNICIANS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(techniciansList));
+    } catch (e) {}
+  }, [techniciansList]);
 
   // Veritabanına Otomatik Kaydetme
   const persistToDatabase = useCallback(async (dataToPersist) => {
@@ -574,6 +596,71 @@ export const DentalProvider = ({ children }) => {
     showToast('İş emri silindi.', 'warning');
   };
 
+  // Teknisyen Ekleme / Çıkarma / Düzenleme
+  const addTechnician = (name, role = 'Dental Teknisyen') => {
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (techniciansList.some(t => t.name.toLowerCase() === trimmed.toLowerCase())) {
+      showToast(`"${trimmed}" zaten ekipte kayıtlı.`, 'warning');
+      return;
+    }
+    const newTech = {
+      id: 'tech-' + Date.now(),
+      name: trimmed,
+      role: role.trim() || 'Dental Teknisyen'
+    };
+    setTechniciansList(prev => [...prev, newTech]);
+    showToast(`Teknisyen "${trimmed}" başarıyla eklendi!`, 'success');
+    return newTech;
+  };
+
+  const removeTechnician = (techIdOrName) => {
+    setTechniciansList(prev => prev.filter(t => t.id !== techIdOrName && t.name !== techIdOrName));
+    showToast('Teknisyen ekipten çıkarıldı.', 'info');
+  };
+
+  const updateTechnician = (techId, updatedData) => {
+    setTechniciansList(prev => prev.map(t => t.id === techId ? { ...t, ...updatedData } : t));
+    showToast('Teknisyen güncellendi.', 'success');
+  };
+
+  // Belirli bir iş emrinin aşamasına sorumlu teknisyen atama
+  const assignTechnicianToStep = (orderId, stepIndex, technician) => {
+    setData(prev => {
+      let changedOrder = null;
+      const orders = prev.orders.map(o => {
+        if (o.id !== orderId) return o;
+        const updated = { ...o, steps: [...(o.steps || [])] };
+        if (updated.steps[stepIndex]) {
+          updated.steps[stepIndex] = {
+            ...updated.steps[stepIndex],
+            technician: technician
+          };
+        }
+        changedOrder = updated;
+        return updated;
+      });
+
+      if (changedOrder) saveOrderToSupabase(changedOrder);
+      return { ...prev, orders };
+    });
+    showToast(`Sorumlu teknisyen "${technician}" olarak güncellendi.`, 'success');
+  };
+
+  // Küçük Tamamlandı Kutucuğu: Tek tıkla aşamayı tamamla veya geri al
+  const toggleStepCompletion = (orderId, stepIndex) => {
+    const order = data.orders.find(o => o.id === orderId);
+    if (!order || !order.steps || !order.steps[stepIndex]) return;
+    const currentStatus = order.steps[stepIndex].status;
+    if (currentStatus === 'completed') {
+      updateStepStatus(orderId, stepIndex, 'in_progress');
+      showToast('Aşama tekrar işlemde olarak işaretlendi.', 'info');
+    } else {
+      updateStepStatus(orderId, stepIndex, 'completed');
+      showToast('✓ Aşama tamamlandı!', 'success');
+    }
+  };
+
   const saveCompany = (comp) => {
     let savedObj = { ...comp };
     if (!savedObj.id) {
@@ -664,7 +751,15 @@ export const DentalProvider = ({ children }) => {
         patients: data.patients || [],
         materials: DEFAULT_MATERIALS,
         vitaShades: VITA_SHADES,
-        technicians: TECHNICIANS,
+        technicians: techniciansList.map(t => t.name),
+        techniciansList,
+        addTechnician,
+        removeTechnician,
+        updateTechnician,
+        assignTechnicianToStep,
+        toggleStepCompletion,
+        isTeamModalOpen,
+        setIsTeamModalOpen,
         theme,
         toggleTheme,
         searchQuery,

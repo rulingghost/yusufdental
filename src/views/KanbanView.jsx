@@ -15,7 +15,10 @@ import {
   User,
   Building2,
   Calendar,
-  Sparkles
+  Sparkles,
+  Info,
+  Users,
+  Check
 } from 'lucide-react';
 
 export const KanbanView = () => {
@@ -31,11 +34,16 @@ export const KanbanView = () => {
     regressOrderToPrevStep,
     moveOrderToStep,
     restartOrder,
-    setIsOrderModalOpen
+    setIsOrderModalOpen,
+    setIsTeamModalOpen,
+    assignTechnicianToStep
   } = useDental();
 
   // 'active_pipeline' (Üretim hattı) vs 'completed_archive' (Tamamlananlar)
   const [viewMode, setViewMode] = useState('active_pipeline');
+
+  // Bilgi Modalı State'i (İşlem Hakkında)
+  const [infoModalOrder, setInfoModalOrder] = useState(null);
 
   // Filtreleme Durumları
   const [searchTerm, setSearchTerm] = useState('');
@@ -263,14 +271,26 @@ export const KanbanView = () => {
             </button>
           </div>
 
-          <button
-            type="button"
-            className="btn-dental btn-dental-primary"
-            onClick={() => setIsOrderModalOpen(true)}
-          >
-            <Plus size={17} strokeWidth={2.5} />
-            <span>Yeni İş Emri Başlat</span>
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn-dental btn-dental-secondary"
+              onClick={() => setIsTeamModalOpen(true)}
+              title="Laboratuvar teknisyenlerini ve ekibi yönet"
+            >
+              <Users size={16} />
+              <span>Ekip & Teknisyenler</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-dental btn-dental-primary"
+              onClick={() => setIsOrderModalOpen(true)}
+            >
+              <Plus size={17} strokeWidth={2.5} />
+              <span>Yeni İş Emri Başlat</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -666,12 +686,43 @@ export const KanbanView = () => {
                             </div>
                           </div>
 
-                          {/* Alt Kısım: Sorumlu & Teslim Tarihi */}
-                          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <User size={12} />
-                              {curStep?.technician ? curStep.technician.split(' ')[0] : 'Atanmadı'}
-                            </span>
+                          {/* Alt Kısım: Sorumlu Teknisyen Seçimi & Teslim Tarihi */}
+                          <div
+                            style={{
+                              marginTop: 10,
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              fontSize: '0.74rem',
+                              color: 'var(--text-muted)'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <User size={12} color="var(--dental-blue)" />
+                              <select
+                                value={curStep?.technician || ''}
+                                onChange={(e) => assignTechnicianToStep(order.id, curIndex, e.target.value)}
+                                title="Sorumlu Teknisyeni Değiştir"
+                                style={{
+                                  background: 'var(--bg-surface-elevated)',
+                                  border: '1px solid var(--border-subtle)',
+                                  borderRadius: 4,
+                                  fontSize: '0.72rem',
+                                  padding: '2px 4px',
+                                  color: 'var(--text-primary)',
+                                  cursor: 'pointer',
+                                  maxWidth: 110,
+                                  outline: 'none'
+                                }}
+                              >
+                                <option value="">Teknisyen Seç</option>
+                                {technicians.map(t => (
+                                  <option key={t} value={t}>{t.split(' ')[0]}</option>
+                                ))}
+                              </select>
+                            </div>
+
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: order.priority === 'urgent' ? '#dc2626' : 'inherit', fontWeight: order.priority === 'urgent' ? 700 : 400 }}>
                               <Calendar size={12} />
                               {order.deliveryDate || '-'}
@@ -692,26 +743,27 @@ export const KanbanView = () => {
                               </button>
                             )}
 
-                            {/* Doğrudan Sonraki Aşamaya İlerletme Butonu */}
+                            {/* Doğrudan Sonraki Aşamaya İlerletme / Tamamlama Butonu */}
                             <button
                               type="button"
                               className="job-advance-btn"
                               onClick={() => advanceOrderToNextStep(order.id)}
                               title={isLastStep ? 'Bu işi bitir ve arşive aktar' : 'Sonraki üretim istasyonuna aktar'}
                             >
-                              <span>{isLastStep ? '✓ İşi Tamamla' : 'Sonraki Aşama'}</span>
+                              <span>{isLastStep ? '✓ İşi Bitir' : '✓ İlerlet'}</span>
                               <ArrowRight size={13} />
                             </button>
 
-                            {/* Detay Butonu */}
+                            {/* İşlem Hakkında Butonu (Açıklayıcı Detay Modalı) */}
                             <button
                               type="button"
                               className="btn-dental btn-dental-secondary"
-                              style={{ padding: '6px 9px', fontSize: '0.75rem' }}
-                              onClick={() => navigate('/orders/' + order.id)}
-                              title="İş emri reçete ve detayını incele"
+                              style={{ padding: '6px 8px', fontSize: '0.72rem' }}
+                              onClick={() => setInfoModalOrder(order)}
+                              title="Bu istasyonun teknik açıklamasını ve sipariş notlarını gör"
                             >
-                              Detay
+                              <Info size={12} />
+                              <span>İşlem Hakkında</span>
                             </button>
                           </div>
                         </div>
@@ -819,6 +871,152 @@ export const KanbanView = () => {
           </div>
         </div>
       )}
+
+      {/* İŞLEM HAKKINDA MODALI (Kanban Kartından 1-Tıkla Açılan Detaylı Rehber) */}
+      {infoModalOrder && (() => {
+        const o = infoModalOrder;
+        const pat = patients.find(p => p.id === o.patientId);
+        const doc = doctors.find(d => d.id === o.doctorId);
+        const comp = companies.find(c => c.id === o.companyId);
+        const curIdx = o.currentStepIndex || 0;
+        const curStep = o.steps?.[curIdx] || {};
+        const mat = materials[o.materialId] || { name: o.materialId, color: '#0284c7' };
+
+        return (
+          <div className="modal-overlay" onClick={() => setInfoModalOrder(null)}>
+            <div
+              className="modal-dialog-box"
+              style={{ maxWidth: 540 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Başlığı */}
+              <div className="modal-dialog-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'rgba(2, 132, 199, 0.12)',
+                      color: 'var(--dental-blue)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Info size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>
+                      İş Emri #{o.id} • İşlem Hakkında
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {pat?.name || 'Hasta'} • {comp?.name || 'Klinik'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-modal-close"
+                  onClick={() => setInfoModalOrder(null)}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal İçeriği */}
+              <div className="modal-dialog-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Şu Anki İstasyon Bilgisi */}
+                <div
+                  style={{
+                    padding: '12px 16px',
+                    background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(6, 182, 212, 0.12))',
+                    border: '1px solid rgba(2, 132, 199, 0.25)',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--dental-blue)', letterSpacing: '0.04em' }}>
+                    Mevcut İstasyon ({curIdx + 1} / {(o.steps || []).length}):
+                  </div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, marginTop: 2, color: 'var(--text-primary)' }}>
+                    {curStep.name || 'İşlem İstasyonu'}
+                  </div>
+                  <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.5 }}>
+                    {curStep.description || 'Bu istasyonda uygulanacak özel teknik talimat girilmemiş.'}
+                  </div>
+                </div>
+
+                {/* Sorumlu Teknisyen & Süre */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ padding: '10px 12px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Sorumlu Teknisyen:</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
+                      👤 {curStep.technician || 'Atanmadı'}
+                    </div>
+                  </div>
+                  <div style={{ padding: '10px 12px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Nihai Teslim Tarihi:</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: o.priority === 'urgent' ? 'var(--status-urgent)' : 'var(--text-primary)', marginTop: 2 }}>
+                      📅 {o.deliveryDate || '-'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Diş & Materyal Detayları */}
+                <div style={{ padding: '10px 12px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4 }}>Restorasyon & Malzeme:</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span className={`badge-pill ${mat.badgeClass || ''}`} style={{ fontSize: '0.78rem' }}>
+                      {mat.name}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '2px 8px', background: '#f0fdf4', color: '#16a34a', borderRadius: 4 }}>
+                      VITA Renk: {o.shade || 'A2'}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', fontFamily: 'JetBrains Mono', fontWeight: 700, padding: '2px 8px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 4 }}>
+                      Diş No: {(o.teeth || []).join(', ') || '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hekim / Sipariş Notları */}
+                {o.notes && (
+                  <div style={{ padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 'var(--radius-sm)' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#92400e', marginBottom: 2 }}>
+                      ⚠️ Hekim / Sipariş Notu:
+                    </div>
+                    <div style={{ fontSize: '0.84rem', color: '#78350f', lineHeight: 1.4 }}>
+                      {o.notes}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Altı */}
+              <div className="modal-dialog-footer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="btn-dental btn-dental-primary"
+                  onClick={() => {
+                    navigate('/orders/' + o.id);
+                    setInfoModalOrder(null);
+                  }}
+                >
+                  <span>Tüm Reçeteyi & Detayları Aç</span>
+                  <ArrowRight size={14} />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-dental btn-dental-secondary"
+                  onClick={() => setInfoModalOrder(null)}
+                >
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { OrderModal } from './components/OrderModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
+import { TeamModal } from './components/TeamModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 
 // Sayfalar
@@ -79,6 +80,9 @@ const AppLayout = () => {
 
       {/* Ücretsiz Veritabanı Ayarları Modalı */}
       <DatabaseConfigModal />
+
+      {/* Laboratuvar Ekibi / Teknisyenler Modalı */}
+      <TeamModal />
 
       {/* Mobil Alt Navigasyon Çubuğu */}
       <MobileBottomNav />
