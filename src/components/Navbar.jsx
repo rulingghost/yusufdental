@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Search, Plus, Sun, Moon, Menu, Database, X, Users } from 'lucide-react';
+import { Search, Plus, Sun, Moon, Menu, X, Users } from 'lucide-react';
 
 export const Navbar = ({ onToggleSidebar }) => {
   const {
@@ -9,10 +9,8 @@ export const Navbar = ({ onToggleSidebar }) => {
     theme,
     toggleTheme,
     setIsOrderModalOpen,
-    setIsDbModalOpen,
     setIsTeamModalOpen,
-    technicians,
-    dbStatus
+    technicians
   } = useDental();
 
   const searchInputRef = useRef(null);
@@ -80,29 +78,6 @@ export const Navbar = ({ onToggleSidebar }) => {
       </div>
 
       <div className="navbar-right-group">
-        {/* Veritabanı Durumu Butonu */}
-        <button
-          type="button"
-          className="btn-dental btn-dental-secondary navbar-db-btn"
-          onClick={() => setIsDbModalOpen && setIsDbModalOpen(true)}
-          title="Supabase Bulut Veritabanı Durumu"
-        >
-          <span
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: dbStatus === 'connected' ? '#10b981' : '#f59e0b',
-              boxShadow: dbStatus === 'connected' ? '0 0 6px #10b981' : 'none',
-              flexShrink: 0
-            }}
-          />
-          <Database size={15} color="var(--dental-blue)" />
-          <span className="navbar-btn-text">
-            {dbStatus === 'connected' ? 'Bulut: Aktif' : 'Bulut'}
-          </span>
-        </button>
-
         {/* Ekip & Teknisyenler Butonu */}
         <button
           type="button"
