@@ -1,20 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
 import { PipelineStepper } from '../components/PipelineStepper';
 import { PrintSlip } from '../components/PrintSlip';
-import { ArrowLeft, Printer, Upload, FileText, Image as ImageIcon, Edit3, X, Share2, Copy } from 'lucide-react';
+import { ArrowLeft, Printer, Edit3, X, Share2, Copy } from 'lucide-react';
 
 export const OrderDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { orders, companies, doctors, patients, materials, vitaShades, saveOrder, showToast, restartOrder } = useDental();
-
-  const fileInputRef = useRef(null);
-  const [uploadedFiles, setUploadedFiles] = useState([
-    { name: 'hasta_on_bolge_foto.jpg', size: '2.4 MB', type: 'image' },
-    { name: 'dijital_olcu_alt_cene.stl', size: '14.8 MB', type: 'stl' }
-  ]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -52,20 +46,6 @@ export const OrderDetailView = () => {
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const newFile = {
-      name: file.name,
-      size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
-      type: file.name.endsWith('.stl') ? 'stl' : 'image'
-    };
-    setUploadedFiles(prev => [...prev, newFile]);
-    showToast(`"${file.name}" dosyası başarıyla yüklendi (Vercel Blob Hazır)!`, 'success');
-    e.target.value = '';
   };
 
   const openEditModal = () => {
@@ -277,59 +257,6 @@ export const OrderDetailView = () => {
             <strong>Hekim Özel Notu:</strong> {order.notes}
           </div>
         )}
-      </div>
-
-      {/* VERCEL BLOB / DİJİTAL CAD-CAM STL & RÖNTGEN DOSYALARI */}
-      <div className="dental-card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <strong style={{ fontSize: '1rem' }}>📁 Dijital 3D CAD/CAM STL & Ağız İçi Fotoğraflar</strong>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Vercel Blob ile bulutta güvenle saklanır</div>
-          </div>
-          <div>
-            <button
-              type="button"
-              className="btn-dental btn-dental-secondary btn-dental-sm"
-              onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            >
-              <Upload size={14} />
-              <span>Yeni STL / Fotoğraf Yükle</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          {uploadedFiles.map((f, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 14px',
-                background: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)'
-              }}
-            >
-              <div style={{ width: 34, height: 34, borderRadius: 8, background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {f.type === 'stl' ? <FileText size={18} /> : <ImageIcon size={18} />}
-              </div>
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {f.name}
-                </div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{f.size} • Bulutta Kayıtlı</div>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* CANLI ADIM ADIM ÜRETİM AŞAMALARI (PIPELINE STEPPER) */}

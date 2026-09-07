@@ -6,9 +6,9 @@
  * aynı laboratuvar veritabanına erişmesini sağlar.
  * 
  * Desteklenen Bulut Depolama Seçenekleri:
- * 1. Vercel Blob (BLOB_READ_WRITE_TOKEN) - JSON verisini bulut blobu olarak saklar.
- * 2. Vercel KV / Upstash (KV_REST_API_URL / KV_REST_API_TOKEN) - Hızlı Key-Value veritabanı.
- * 3. In-memory / Serverless önbellek.
+ * 1. Supabase REST API (Ücretsiz Bulut Veritabanı)
+ * 2. Vercel KV / Redis (KV_REST_API_URL & KV_REST_API_TOKEN)
+ * 3. Serverless Memory Fallback
  */
 
 // Sunucu oturumu süresince global bellek önbelleği
@@ -53,26 +53,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // 1.2 Vercel Blob Varsa
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        try {
-          const { list } = await import('@vercel/blob');
-          const { blobs } = await list({ prefix: `dentallab_${labKey}.json` });
-          if (blobs && blobs.length > 0) {
-            const fileRes = await fetch(blobs[0].url);
-            if (fileRes.ok) {
-              const blobData = await fileRes.json();
-              return res.status(200).json({
-                success: true,
-                storageType: 'vercel_blob',
-                data: blobData
-              });
-            }
-          }
-        } catch (blobErr) {
-          console.warn('Vercel Blob read warning:', blobErr.message);
-        }
-      }
 
       // 1.3 Varsayılan Sunucu Belleği
       return res.status(200).json({
@@ -121,18 +101,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // 2.2 Vercel Blob Varsa
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        try {
-          const { put } = await import('@vercel/blob');
-          await put(`dentallab_${labKey}.json`, JSON.stringify(cleanData, null, 2), {
-            access: 'public',
-            addRandomSuffix: false
-          });
-        } catch (blobErr) {
-          console.warn('Vercel Blob write warning:', blobErr.message);
-        }
-      }
 
       return res.status(200).json({
         success: true,

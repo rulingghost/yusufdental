@@ -72,26 +72,14 @@ CREATE TABLE IF NOT EXISTS order_steps (
     notes TEXT
 );
 
--- 6. DİJİTAL CAD / STL DOSYALARI & FOTOĞRAFLAR (Vercel Blob)
-CREATE TABLE IF NOT EXISTS order_files (
-    id SERIAL PRIMARY KEY,
-    order_id VARCHAR(50) REFERENCES orders(id) ON DELETE CASCADE,
-    file_name VARCHAR(255) NOT NULL,
-    file_url TEXT NOT NULL,
-    file_size VARCHAR(50),
-    file_type VARCHAR(50), -- stl, image, pdf
-    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 -- ==========================================================================
--- 7. ROW LEVEL SECURITY (RLS) DEVRE DIŞI BIRAKMA & İZİNLER (Supabase İçin)
+-- 6. ROW LEVEL SECURITY (RLS) DEVRE DIŞI BIRAKMA & İZİNLER (Supabase İçin)
 -- ==========================================================================
 ALTER TABLE IF EXISTS companies DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS doctors DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS patients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS order_steps DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS order_files DISABLE ROW LEVEL SECURITY;
 
 -- Her ihtimale karşı tam açık erişim politikaları (RLS açık kalsa bile çalışır):
 DROP POLICY IF EXISTS "Public access" ON companies;
