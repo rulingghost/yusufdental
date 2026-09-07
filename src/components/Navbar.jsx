@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Search, Plus, Sun, Moon, Menu, Database } from 'lucide-react';
+import { Search, Plus, Sun, Moon, Menu, Database, X } from 'lucide-react';
 
 export const Navbar = ({ onToggleSidebar }) => {
   const {
@@ -12,6 +12,28 @@ export const Navbar = ({ onToggleSidebar }) => {
     setIsDbModalOpen,
     dbStatus
   } = useDental();
+
+  const searchInputRef = useRef(null);
+
+  // Global Klavye Kısayolları (Ctrl+K -> Arama, Ctrl+N -> Yeni İş Emri)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+K veya Cmd+K: Aramaya odaklan
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      // Ctrl+N veya Cmd+N: Yeni sipariş modalını aç (eğer input içinde yazmıyorsa)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+        e.preventDefault();
+        setIsOrderModalOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setIsOrderModalOpen]);
 
   return (
     <header className="top-navbar">
@@ -29,11 +51,29 @@ export const Navbar = ({ onToggleSidebar }) => {
         <div className="top-navbar-search">
           <Search size={18} color="var(--text-muted)" />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Sipariş, hasta, hekim veya klinik ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery ? (
+            <button
+              type="button"
+              className="navbar-clear-btn"
+              onClick={() => {
+                setSearchQuery('');
+                searchInputRef.current?.focus();
+              }}
+              title="Aramayı Temizle"
+            >
+              <X size={15} />
+            </button>
+          ) : (
+            <kbd className="navbar-kbd desktop-only" title="Hızlı Arama (Ctrl + K)">
+              Ctrl K
+            </kbd>
+          )}
         </div>
       </div>
 

@@ -1353,6 +1353,176 @@ a {
   }
 }
 
+/* ==========================================================================
+   HIZLI İŞLEM VE ERGONOMİ BİLEŞENLERİ (Frictionless UX)
+   ========================================================================== */
+
+/* 1-Tıkla Aşama İlerletme Bannerı */
+.quick-advance-banner {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.08), rgba(6, 182, 212, 0.12));
+  border: 1.5px solid rgba(2, 132, 199, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.08);
+}
+
+.pulse-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dental-cyan);
+  box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+  animation: dentalPulse 1.8s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes dentalPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(6, 182, 212, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+  }
+}
+
+/* Hızlı Renk & Filtre Çipleri (quick-chip-btn) */
+.quick-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.quick-chip-btn:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--dental-blue);
+  color: var(--dental-blue);
+}
+
+.quick-chip-btn.active {
+  background: linear-gradient(135deg, var(--dental-blue), var(--dental-cyan));
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--dental-primary-glow);
+}
+
+/* Hızlı Segment Buton Grubu (Acil, Normal, VIP) */
+.quick-segmented-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.quick-segmented-btn:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--border-focus);
+}
+
+.quick-segmented-btn.active {
+  background: var(--dental-primary);
+  border-color: var(--dental-primary);
+  color: #ffffff;
+  box-shadow: 0 3px 10px var(--dental-primary-glow);
+}
+
+/* Mikro Aksiyon Hap Butonları (+2 Gün, 11-21, vs.) */
+.quick-micro-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.quick-micro-btn:hover {
+  background: var(--bg-surface);
+  border-color: var(--dental-cyan);
+  color: var(--dental-blue);
+}
+
+.quick-micro-btn.active {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: var(--dental-blue);
+  color: var(--dental-blue);
+  font-weight: 800;
+}
+
+/* Arama Kutusu Temizleme ve Klavye Kısayol Rozeti */
+.navbar-kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  font-size: 0.68rem;
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.navbar-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.navbar-clear-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-elevated);
+}
+
 @media (max-width: 768px) {
   /* iOS Input Otomatik Zoom Engelleme (16px kuralı) */
   input, select, textarea {
@@ -1368,7 +1538,8 @@ a {
   }
 
   /* Masaüstü Tablolarını Mobilde Gizle, Kartları Göster */
-  .desktop-table-container {
+  .desktop-table-container,
+  .desktop-only {
     display: none !important;
   }
 

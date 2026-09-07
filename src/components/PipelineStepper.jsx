@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
-import { CheckCircle2, Plus, Trash2, Edit2, X, Check, Clock } from 'lucide-react';
+import { CheckCircle2, Plus, Trash2, Edit2, X, Check, Clock, ArrowRight } from 'lucide-react';
 
 export const PipelineStepper = ({ order }) => {
   const {
@@ -27,6 +27,10 @@ export const PipelineStepper = ({ order }) => {
   const completedCount = (order.steps || []).filter(s => s.status === 'completed').length;
   const totalCount = (order.steps || []).length;
   const progressPct = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const currentStepIdx = (order.steps || []).findIndex(s => s.status === 'in_progress');
+  const activeStep = currentStepIdx !== -1 ? order.steps[currentStepIdx] : null;
+  const isAllCompleted = totalCount > 0 && completedCount === totalCount;
 
   const handleFieldChange = (stepIndex, field, value) => {
     const next = [...localSteps];
@@ -72,7 +76,7 @@ export const PipelineStepper = ({ order }) => {
   return (
     <div>
       {/* İlerleme ve Aşama Ekleme Üst Barı */}
-      <div style={{ padding: '16px 20px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', marginBottom: 20 }}>
+      <div style={{ padding: '16px 20px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Üretim Aşamaları Durumu:</span>
@@ -110,6 +114,36 @@ export const PipelineStepper = ({ order }) => {
           />
         </div>
       </div>
+
+      {/* 1-TIKLA HIZLI AŞAMA İLERLETME KARTI (Frictionless Quick Advance) */}
+      {activeStep && !isAllCompleted && (
+        <div className="quick-advance-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="pulse-indicator" />
+            <div>
+              <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--dental-blue)', letterSpacing: '0.05em' }}>
+                Şu Anki İstasyon:
+              </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>
+                {activeStep.order}. {activeStep.name}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 1 }}>
+                Sorumlu: <strong>{activeStep.technician || 'Atanmadı'}</strong>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn-dental btn-dental-primary"
+            style={{ padding: '10px 18px', fontSize: '0.92rem', boxShadow: '0 4px 14px var(--dental-primary-glow)' }}
+            onClick={() => handleQuickComplete(currentStepIdx)}
+          >
+            <span>✓ Bu Aşamayı Tamamla ve Sonrakine Geç</span>
+            <ArrowRight size={16} />
+          </button>
+        </div>
+      )}
 
       {/* YENİ AŞAMA EKLEME FORMU */}
       {isAddingStep && (

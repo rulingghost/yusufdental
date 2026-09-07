@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDental } from '../context/DentalContext';
 import { Odontogram } from './Odontogram';
-import { X, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Sparkles, UserPlus, Calendar, Clock, DollarSign } from 'lucide-react';
 
 export const OrderModal = () => {
   const {
@@ -12,22 +12,27 @@ export const OrderModal = () => {
     patients,
     materials,
     vitaShades,
-    saveOrder
+    saveOrder,
+    savePatient,
+    showToast
   } = useDental();
 
   const [companyId, setCompanyId] = useState('');
   const [doctorId, setDoctorId] = useState('');
   const [patientId, setPatientId] = useState('');
+  const [isNewPatient, setIsNewPatient] = useState(false);
+  const [newPatientName, setNewPatientName] = useState('');
+
   const [materialId, setMaterialId] = useState('zirconia');
   const [shade, setShade] = useState('A2');
   const [priority, setPriority] = useState('normal');
   const [trialDate, setTrialDate] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
-  const [price, setPrice] = useState(7000);
+  const [price, setPrice] = useState(3500);
   const [notes, setNotes] = useState('');
   const [selectedTeeth, setSelectedTeeth] = useState(['11', '21']);
 
-  // Varsayılan tarihler
+  // Akıllı Varsayılanlar & Tarihler
   useEffect(() => {
     if (isOrderModalOpen) {
       const today = new Date();
@@ -37,18 +42,71 @@ export const OrderModal = () => {
       delivery.setDate(today.getDate() + 5);
       setTrialDate(trial.toISOString().split('T')[0]);
       setDeliveryDate(delivery.toISOString().split('T')[0]);
+
+      // İlk firma ve doktoru otomatik seç (Boş bekleme süresini sıfırla)
+      if (!companyId && companies.length > 0) {
+        const firstComp = companies[0];
+        setCompanyId(firstComp.id);
+        const compDocs = doctors.filter(d => d.companyId === firstComp.id);
+        if (compDocs.length > 0) {
+          setDoctorId(compDocs[0].id);
+          const docPats = patients.filter(p => p.doctorId === compDocs[0].id);
+          if (docPats.length > 0) {
+            setPatientId(docPats[0].id);
+          }
+        }
+      }
     }
-  }, [isOrderModalOpen]);
+  }, [isOrderModalOpen, companies, doctors, patients]);
+
+  // Diş sayısı değiştikçe bedel önerisi
+  useEffect(() => {
+    const count = selectedTeeth.length || 1;
+    setPrice(count * 1750);
+  }, [selectedTeeth]);
 
   if (!isOrderModalOpen) return null;
 
   const filteredDoctors = doctors.filter(d => !companyId || d.companyId === companyId);
   const filteredPatients = patients.filter(p => !doctorId || p.doctorId === doctorId);
 
+  // Hızlı teslim tarihi ayarlayıcı
+  const setQuickDeadline = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setDeliveryDate(d.toISOString().split('T')[0]);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!companyId || !doctorId || !patientId) {
-      alert('Lütfen Klinik, Hekim ve Hasta alanlarını eksiksiz seçin.');
+    if (!companyId) {
+      alert('Lütfen bir Klinik seçin.');
+      return;
+    }
+    if (!doctorId) {
+      alert('Lütfen bir Hekim seçin.');
+      return;
+    }
+
+    let finalPatientId = patientId;
+
+    // Hızlı Hasta Ekleme (Hasta sayfasına gitmeye üşenilmesin)
+    if (isNewPatient) {
+      if (!newPatientName.trim()) {
+        alert('Lütfen hasta adını girin.');
+        return;
+      }
+      const saved = savePatient({
+        companyId,
+        doctorId,
+        name: newPatientName.trim(),
+        chartNumber: 'PRT-' + Math.floor(1000 + Math.random() * 9000),
+        age: 35,
+        gender: 'Belirtilmedi'
+      });
+      finalPatientId = saved.id;
+    } else if (!patientId) {
+      alert('Lütfen listeden bir hasta seçin veya "+ Yeni Hasta" butonuna basıp adını yazın.');
       return;
     }
 
@@ -66,7 +124,7 @@ export const OrderModal = () => {
     saveOrder({
       companyId,
       doctorId,
-      patientId,
+      patientId: finalPatientId,
       materialId,
       teeth: selectedTeeth,
       shade,
@@ -82,6 +140,7 @@ export const OrderModal = () => {
     });
 
     setIsOrderModalOpen(false);
+    showToast(`İş emri başarıyla başlatıldı ve üretim hattına alındı ✓`, 'success');
   };
 
   return (
@@ -92,7 +151,10 @@ export const OrderModal = () => {
             <div style={{ width: 34, height: 34, borderRadius: 8, background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={18} />
             </div>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Yeni Diş Protez İş Emri Başlat</h3>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Yeni Diş Protez İş Emri</h3>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Hızlı seçim tuşları ile saniyeler içinde başlatın</span>
+            </div>
           </div>
           <button
             type="button"
@@ -114,8 +176,10 @@ export const OrderModal = () => {
                   className="dental-input"
                   value={companyId}
                   onChange={(e) => {
-                    setCompanyId(e.target.value);
-                    setDoctorId('');
+                    const cid = e.target.value;
+                    setCompanyId(cid);
+                    const docs = doctors.filter(d => d.companyId === cid);
+                    setDoctorId(docs[0]?.id || '');
                     setPatientId('');
                   }}
                   required
@@ -146,20 +210,53 @@ export const OrderModal = () => {
                 </select>
               </div>
 
-              {/* Hasta */}
+              {/* Hasta (Hızlı Yeni Hasta Ekleme Desteği) */}
               <div className="form-item">
-                <label>Hasta *</label>
-                <select
-                  className="dental-input"
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                  required
-                >
-                  <option value="">Hasta Seçin...</option>
-                  {filteredPatients.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} (#{p.chartNumber})</option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <label>Hasta Adı *</label>
+                  <button
+                    type="button"
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      color: 'var(--dental-blue)',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                    onClick={() => setIsNewPatient(!isNewPatient)}
+                  >
+                    <UserPlus size={13} />
+                    <span>{isNewPatient ? 'Kayıtlılardan Seç' : '+ Yeni Hasta Adı Yaz'}</span>
+                  </button>
+                </div>
+
+                {isNewPatient ? (
+                  <input
+                    type="text"
+                    className="dental-input"
+                    placeholder="Örn: Ayşe Demir"
+                    value={newPatientName}
+                    onChange={(e) => setNewPatientName(e.target.value)}
+                    autoFocus
+                    required
+                  />
+                ) : (
+                  <select
+                    className="dental-input"
+                    value={patientId}
+                    onChange={(e) => setPatientId(e.target.value)}
+                    required
+                  >
+                    <option value="">Hasta Seçin...</option>
+                    {filteredPatients.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} (#{p.chartNumber})</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Materyal */}
@@ -177,9 +274,21 @@ export const OrderModal = () => {
                 </select>
               </div>
 
-              {/* VITA Rengi */}
+              {/* VITA Rengi ve Hızlı Renk Tuşları */}
               <div className="form-item">
                 <label>VITA Diş Rengi *</label>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
+                  {['A1', 'A2', 'A3', 'A3.5', 'B1', 'B2', 'BL2', 'BL3'].map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`quick-chip-btn ${shade === s ? 'active' : ''}`}
+                      onClick={() => setShade(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
                 <select
                   className="dental-input"
                   value={shade}
@@ -192,34 +301,38 @@ export const OrderModal = () => {
                 </select>
               </div>
 
-              {/* Öncelik */}
+              {/* Öncelik / Aciliyet */}
               <div className="form-item">
                 <label>Aciliyet Seviyesi</label>
-                <select
-                  className="dental-input"
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                >
-                  <option value="normal">Normal Üretim (Standart)</option>
-                  <option value="urgent">Acil (24-48 Saat)</option>
-                  <option value="vip">VIP Özel Öncelikli</option>
-                </select>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                  {[
+                    { id: 'normal', label: '🟢 Normal' },
+                    { id: 'urgent', label: '🔴 Acil (Vaka)' },
+                    { id: 'vip', label: '⭐ VIP' }
+                  ].map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`quick-segmented-btn ${priority === p.id ? 'active' : ''}`}
+                      onClick={() => setPriority(p.id)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Prova Tarihi */}
+              {/* Teslim Tarihi ve Hızlı Gün Seçicileri */}
               <div className="form-item">
-                <label>Prova Tarihi (Metal / Dentin)</label>
-                <input
-                  type="date"
-                  className="dental-input"
-                  value={trialDate}
-                  onChange={(e) => setTrialDate(e.target.value)}
-                />
-              </div>
-
-              {/* Teslim Tarihi */}
-              <div className="form-item">
-                <label>Teslim Tarihi *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label>Teslim Tarihi *</label>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button type="button" className="quick-micro-btn" onClick={() => setQuickDeadline(2)}>+2 Gün</button>
+                    <button type="button" className="quick-micro-btn" onClick={() => setQuickDeadline(4)}>+4 Gün</button>
+                    <button type="button" className="quick-micro-btn active" onClick={() => setQuickDeadline(5)}>+5 Gün</button>
+                    <button type="button" className="quick-micro-btn" onClick={() => setQuickDeadline(7)}>+7 Gün</button>
+                  </div>
+                </div>
                 <input
                   type="date"
                   className="dental-input"
@@ -232,33 +345,47 @@ export const OrderModal = () => {
               {/* Bedel */}
               <div className="form-item">
                 <label>İşlem Bedeli (₺)</label>
-                <input
-                  type="number"
-                  className="dental-input"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  step="100"
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="number"
+                    className="dental-input"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    step="100"
+                    style={{ width: '100%' }}
+                  />
+                  <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    ({selectedTeeth.length} Diş)
+                  </span>
+                </div>
               </div>
 
               {/* Hekim Özel Talimatı */}
               <div className="form-item span-all">
-                <label>Hekim / Klinik Özel Laboratuvar Notu</label>
+                <label>Hekim / Klinik Laboratuvar Notu</label>
                 <textarea
                   className="dental-input"
                   rows={2}
-                  placeholder="Örn: 11 ve 21 nolu dişlerde insizal transparanlık yüksek tutulsun, kapanış hafif bırakılsın..."
+                  placeholder="Örn: 11 ve 21 nolu dişlerde insizal transparanlık yüksek tutulsun..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
             </div>
 
-            {/* İNTERAKTİF DİŞ ŞEMASI */}
-            <div style={{ marginTop: 20 }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
-                İnteraktif FDI Diş Şeması (İşlem Yapılacak Dişleri Tıklayarak Seçin):
-              </label>
+            {/* İNTERAKTİF DİŞ ŞEMASI & HIZLI ŞABLONLAR */}
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  İşlem Yapılacak Dişler ({selectedTeeth.length} Diş Seçili):
+                </label>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <button type="button" className="quick-micro-btn" onClick={() => setSelectedTeeth(['11', '21'])}>11 - 21</button>
+                  <button type="button" className="quick-micro-btn" onClick={() => setSelectedTeeth(['13', '12', '11', '21', '22', '23'])}>Ön 6 Diş</button>
+                  <button type="button" className="quick-micro-btn" onClick={() => setSelectedTeeth(['12', '11', '21', '22'])}>Üst Ön 4</button>
+                  <button type="button" className="quick-micro-btn" onClick={() => setSelectedTeeth(['33', '32', '31', '41', '42', '43'])}>Alt Ön</button>
+                </div>
+              </div>
               <Odontogram
                 selectedTeeth={selectedTeeth}
                 onChange={setSelectedTeeth}
@@ -278,7 +405,7 @@ export const OrderModal = () => {
               type="submit"
               className="btn-dental btn-dental-primary"
             >
-              İş Emrini Başlat & Üretim Hattına Al
+              ✓ İş Emrini Hemen Başlat
             </button>
           </div>
         </form>
@@ -286,3 +413,4 @@ export const OrderModal = () => {
     </div>
   );
 };
+

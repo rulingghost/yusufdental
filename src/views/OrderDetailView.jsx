@@ -3,12 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
 import { PipelineStepper } from '../components/PipelineStepper';
 import { PrintSlip } from '../components/PrintSlip';
-import { ArrowLeft, Printer, Upload, FileText, Image as ImageIcon, Edit3, X } from 'lucide-react';
+import { ArrowLeft, Printer, Upload, FileText, Image as ImageIcon, Edit3, X, Share2, Copy } from 'lucide-react';
 
 export const OrderDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, companies, doctors, patients, materials, vitaShades, saveOrder, showToast } = useDental();
+  const { orders, companies, doctors, patients, materials, vitaShades, saveOrder, showToast, restartOrder } = useDental();
 
   const fileInputRef = useRef(null);
   const [uploadedFiles, setUploadedFiles] = useState([
@@ -98,6 +98,37 @@ export const OrderDetailView = () => {
     }
   };
 
+  const handleCopyWhatsApp = () => {
+    const toothInfo = order.selectedTeeth && order.selectedTeeth.length > 0 
+      ? order.selectedTeeth.join(', ') 
+      : 'Belirtilmedi';
+    const activeStep = (order.steps || []).find(s => s.status === 'in_progress') || (order.steps || [])[0];
+    const stepName = isCompleted ? '✓ Üretim Tamamlandı' : (activeStep ? `${activeStep.order}. ${activeStep.name}` : 'İşlemde');
+
+    const text = 
+`🦷 *DENTALLAB - İŞ EMRİ BİLGİSİ*
+📋 *İş No:* #${order.id}
+🏥 *Klinik:* ${company?.name || 'Bilinmiyor'}
+👨‍⚕️ *Hekim:* ${doctor?.name || 'Bilinmiyor'}
+👤 *Hasta:* ${patient?.name || 'Bilinmiyor'}
+🦷 *Diş No:* ${toothInfo}
+💎 *Tür:* ${material.name} (Renk: ${order.shade || 'Belirtilmedi'})
+⚡ *Aşama:* ${stepName}
+📅 *Teslim:* ${order.deliveryDate || 'Belirtilmedi'}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+    showToast('WhatsApp için sipariş bilgisi panoya kopyalandı! 📋', 'success');
+  };
+
   const isCompleted = order.status === 'completed';
 
   return (
@@ -134,7 +165,17 @@ export const OrderDetailView = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-dental btn-dental-secondary"
+            onClick={handleCopyWhatsApp}
+            title="WhatsApp veya mesaja yapıştırmak için tek tıkla kopyala"
+            style={{ borderColor: '#25d366', color: '#16a34a' }}
+          >
+            <Copy size={16} />
+            <span>WhatsApp Özeti Kopyala</span>
+          </button>
           <button
             type="button"
             className="btn-dental btn-dental-secondary"

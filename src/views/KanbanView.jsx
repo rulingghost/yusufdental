@@ -287,8 +287,28 @@ export const KanbanView = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="dental-input"
-                style={{ width: '100%', paddingLeft: 34, fontSize: '0.84rem' }}
+                style={{ width: '100%', paddingLeft: 34, paddingRight: searchTerm ? 32 : 12, fontSize: '0.84rem' }}
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 4
+                  }}
+                  title="Aramayı Temizle"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             {/* Mobilde Filtreleri Aç/Kapa Butonu */}
@@ -299,6 +319,33 @@ export const KanbanView = () => {
             >
               <Filter size={15} />
               <span>Filtrele {isFiltered && '●'}</span>
+            </button>
+          </div>
+
+          {/* 1-Tıkla Hızlı Filtre Butonları (Teknisyenlerin En Çok Kullandığı) */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%', marginTop: 6 }}>
+            <button
+              type="button"
+              className={`quick-chip-btn ${filterPriority === 'all' && !searchTerm ? 'active' : ''}`}
+              onClick={() => { setFilterPriority('all'); setSearchTerm(''); }}
+            >
+              🌟 Tümü ({activeOrders.length})
+            </button>
+            <button
+              type="button"
+              className={`quick-chip-btn ${filterPriority === 'urgent' ? 'active' : ''}`}
+              style={{ color: filterPriority === 'urgent' ? '#fff' : '#dc2626' }}
+              onClick={() => setFilterPriority(filterPriority === 'urgent' ? 'all' : 'urgent')}
+            >
+              🔴 Sadece Aciller ({activeOrders.filter(o => o.priority === 'urgent').length})
+            </button>
+            <button
+              type="button"
+              className={`quick-chip-btn ${filterPriority === 'vip' ? 'active' : ''}`}
+              style={{ color: filterPriority === 'vip' ? '#fff' : '#d97706' }}
+              onClick={() => setFilterPriority(filterPriority === 'vip' ? 'all' : 'vip')}
+            >
+              ⭐ VIP ({activeOrders.filter(o => o.priority === 'vip').length})
             </button>
           </div>
 
@@ -450,12 +497,20 @@ export const KanbanView = () => {
       {viewMode === 'active_pipeline' && orders.length > 0 && (
         <div className={`kanban-board-container ${activeMobileStation !== 'all' ? 'has-single-station' : ''}`}>
           {(activeMobileStation === 'all' ? STATIONS : STATIONS.filter(s => s.id === activeMobileStation)).map(st => {
-            // Bu istasyona uyan siparişler
-            const matchingOrders = filteredActiveOrders.filter(o => {
-              const curStep = o.steps?.[o.currentStepIndex];
-              if (!curStep) return false;
-              return st.filter(curStep);
-            });
+            // Bu istasyona uyan siparişler (Acil ve en yakın teslim tarihliler otomatik en üstte)
+            const matchingOrders = filteredActiveOrders
+              .filter(o => {
+                const curStep = o.steps?.[o.currentStepIndex];
+                if (!curStep) return false;
+                return st.filter(curStep);
+              })
+              .sort((a, b) => {
+                if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
+                if (b.priority === 'urgent' && a.priority !== 'urgent') return 1;
+                if (a.priority === 'vip' && b.priority !== 'vip') return -1;
+                if (b.priority === 'vip' && a.priority !== 'vip') return 1;
+                return (a.deliveryDate || '').localeCompare(b.deliveryDate || '');
+              });
 
             return (
               <div
