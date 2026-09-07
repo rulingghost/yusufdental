@@ -517,6 +517,8 @@ export const PipelineStepper = ({ order }) => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 6,
                       fontSize: '0.74rem',
                       color: 'var(--text-muted)',
                       paddingTop: 8,
