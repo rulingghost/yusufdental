@@ -12,10 +12,11 @@ import {
   Download,
   Upload,
   RotateCcw,
-  Database
+  Database,
+  X
 } from 'lucide-react';
 
-export const Sidebar = () => {
+export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const { orders, exportData, importData, clearAllData, setIsDbModalOpen } = useDental();
   const fileInputRef = useRef(null);
 
@@ -32,21 +33,46 @@ export const Sidebar = () => {
     e.target.value = '';
   };
 
+  const handleNavClick = () => {
+    if (window.innerWidth <= 1024) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="app-sidebar">
-      {/* Brand Header */}
-      <div className="brand-section">
-        <div className="brand-icon-dental">
-          {/* Dental Tooth SVG */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M7 2C4.5 2 3 4 3 6.5C3 9 4.2 12.5 5 15.5C5.8 18.5 6.5 22 8 22C9.5 22 10 19 11 15C11.5 13 12.5 13 13 15C14 19 14.5 22 16 22C17.5 22 18.2 18.5 19 15.5C19.8 12.5 21 9 21 6.5C21 4 19.5 2 17 2C15 2 13.5 3.5 12 3.5C10.5 3.5 9 2 7 2Z"/>
-          </svg>
+    <>
+      {/* Mobil Karartma Perdesi (Backdrop) */}
+      <div
+        className={`sidebar-backdrop ${isOpen ? 'is-visible' : ''}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <aside className={`app-sidebar ${isOpen ? 'is-open' : ''}`}>
+        {/* Brand Header */}
+        <div className="brand-section">
+          <div className="brand-icon-dental">
+            {/* Dental Tooth SVG */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 2C4.5 2 3 4 3 6.5C3 9 4.2 12.5 5 15.5C5.8 18.5 6.5 22 8 22C9.5 22 10 19 11 15C11.5 13 12.5 13 13 15C14 19 14.5 22 16 22C17.5 22 18.2 18.5 19 15.5C19.8 12.5 21 9 21 6.5C21 4 19.5 2 17 2C15 2 13.5 3.5 12 3.5C10.5 3.5 9 2 7 2Z"/>
+            </svg>
+          </div>
+          <div className="brand-info">
+            <h1>DentalLab Pro</h1>
+            <span>Diş Üretim ERP</span>
+          </div>
+
+          {/* Mobil Kapatma Butonu */}
+          <button
+            type="button"
+            className="sidebar-mobile-close-btn"
+            onClick={onClose}
+            aria-label="Menüyü Kapat"
+          >
+            <X size={20} />
+          </button>
         </div>
-        <div className="brand-info">
-          <h1>DentalLab Pro</h1>
-          <span>Diş Üretim ERP</span>
-        </div>
-      </div>
+
 
       {/* Nav Linkleri */}
       <ul className="nav-menu">
@@ -55,6 +81,7 @@ export const Sidebar = () => {
           <NavLink
             to="/"
             end
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <LayoutDashboard size={18} />
@@ -64,6 +91,7 @@ export const Sidebar = () => {
         <li>
           <NavLink
             to="/kanban"
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <Columns3 size={18} />
@@ -73,6 +101,7 @@ export const Sidebar = () => {
         <li>
           <NavLink
             to="/orders"
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <ClipboardList size={18} />
@@ -87,6 +116,7 @@ export const Sidebar = () => {
         <li>
           <NavLink
             to="/companies"
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <Building2 size={18} />
@@ -96,6 +126,7 @@ export const Sidebar = () => {
         <li>
           <NavLink
             to="/doctors"
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <Stethoscope size={18} />
@@ -105,6 +136,7 @@ export const Sidebar = () => {
         <li>
           <NavLink
             to="/patients"
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <Users size={18} />
@@ -116,6 +148,7 @@ export const Sidebar = () => {
         <li>
           <NavLink
             to="/materials"
+            onClick={handleNavClick}
             className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
           >
             <BookOpen size={18} />
@@ -130,7 +163,10 @@ export const Sidebar = () => {
             type="button"
             className="btn-dental btn-dental-secondary btn-dental-sm"
             style={{ width: '100%', justifyContent: 'flex-start', background: 'var(--bg-surface-elevated)' }}
-            onClick={() => setIsDbModalOpen && setIsDbModalOpen(true)}
+            onClick={() => {
+              if (setIsDbModalOpen) setIsDbModalOpen(true);
+              handleNavClick();
+            }}
             title="Ücretsiz Bulut Veritabanı Bağlantısı"
           >
             <Database size={15} color="var(--dental-blue)" />
@@ -207,5 +243,6 @@ export const Sidebar = () => {
         </div>
       </div>
     </aside>
+  </>
   );
 };

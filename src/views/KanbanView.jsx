@@ -44,6 +44,10 @@ export const KanbanView = () => {
   const [filterMaterial, setFilterMaterial] = useState('all');
   const [filterTechnician, setFilterTechnician] = useState('all');
 
+  // Mobil İstasyon Filtresi ('all' veya istasyon id'si örn: 'col-model')
+  const [activeMobileStation, setActiveMobileStation] = useState('all');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   // Sürükle-Bırak Durumu
   const [draggedOrderId, setDraggedOrderId] = useState(null);
   const [dragOverStationId, setDragOverStationId] = useState(null);
@@ -273,80 +277,128 @@ export const KanbanView = () => {
       {/* Gelişmiş Filtreleme & Arama Araç Çubuğu (Kanban İçin) */}
       {viewMode === 'active_pipeline' && (
         <div className="kanban-toolbar">
-          {/* Arama Kutusu */}
-          <div style={{ position: 'relative', flex: '1 1 200px' }}>
-            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              placeholder="Hasta adı, klinik, diş no veya iş emri no..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dental-input"
-              style={{ width: '100%', paddingLeft: 34, fontSize: '0.82rem', padding: '7px 12px 7px 34px' }}
-            />
-          </div>
+          <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+            {/* Arama Kutusu */}
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                placeholder="Hasta adı, klinik, diş no veya iş emri..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="dental-input"
+                style={{ width: '100%', paddingLeft: 34, fontSize: '0.84rem' }}
+              />
+            </div>
 
-          {/* Klinik Filtresi */}
-          <select
-            value={filterClinic}
-            onChange={(e) => setFilterClinic(e.target.value)}
-            className="kanban-filter-select"
-          >
-            <option value="all">🏥 Tüm Klinikler ({companies.length})</option>
-            {companies.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-
-          {/* Öncelik Filtresi */}
-          <select
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-            className="kanban-filter-select"
-          >
-            <option value="all">⚡ Tüm Öncelikler</option>
-            <option value="urgent">🔴 Acil (Vaka)</option>
-            <option value="vip">⭐ VIP Özel</option>
-            <option value="normal">🟢 Normal</option>
-          </select>
-
-          {/* Materyal Filtresi */}
-          <select
-            value={filterMaterial}
-            onChange={(e) => setFilterMaterial(e.target.value)}
-            className="kanban-filter-select"
-          >
-            <option value="all">🦷 Tüm Materyaller</option>
-            <option value="porcelain">Porselen (PFM)</option>
-            <option value="zirconia">Zirkonyum (CAD/CAM)</option>
-            <option value="emax">E-Max / Lamina</option>
-            <option value="implant">İmplant Üstü Hibrit</option>
-          </select>
-
-          {/* Teknisyen Filtresi */}
-          <select
-            value={filterTechnician}
-            onChange={(e) => setFilterTechnician(e.target.value)}
-            className="kanban-filter-select"
-          >
-            <option value="all">👷 Tüm Teknisyenler</option>
-            {technicians.map(t => (
-              <option key={t} value={t.split(' ')[0]}>{t}</option>
-            ))}
-          </select>
-
-          {/* Filtreleri Temizle */}
-          {isFiltered && (
+            {/* Mobilde Filtreleri Aç/Kapa Butonu */}
             <button
               type="button"
-              className="btn-dental btn-dental-secondary btn-dental-sm"
-              onClick={resetFilters}
-              style={{ fontSize: '0.78rem', color: '#dc2626' }}
+              className={`btn-dental btn-dental-sm kanban-mobile-filter-toggle ${isFiltered ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
+              onClick={() => setShowMobileFilters(prev => !prev)}
             >
-              <X size={14} />
-              <span>Filtreleri Temizle</span>
+              <Filter size={15} />
+              <span>Filtrele {isFiltered && '●'}</span>
             </button>
-          )}
+          </div>
+
+          {/* Filtre Seçicileri */}
+          <div className={`kanban-filter-group ${showMobileFilters ? 'is-expanded' : ''}`}>
+            {/* Klinik Filtresi */}
+            <select
+              value={filterClinic}
+              onChange={(e) => setFilterClinic(e.target.value)}
+              className="kanban-filter-select"
+            >
+              <option value="all">🏥 Tüm Klinikler ({companies.length})</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            {/* Öncelik Filtresi */}
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="kanban-filter-select"
+            >
+              <option value="all">⚡ Tüm Öncelikler</option>
+              <option value="urgent">🔴 Acil (Vaka)</option>
+              <option value="vip">⭐ VIP Özel</option>
+              <option value="normal">🟢 Normal</option>
+            </select>
+
+            {/* Materyal Filtresi */}
+            <select
+              value={filterMaterial}
+              onChange={(e) => setFilterMaterial(e.target.value)}
+              className="kanban-filter-select"
+            >
+              <option value="all">🦷 Tüm Materyaller</option>
+              <option value="porcelain">Porselen (PFM)</option>
+              <option value="zirconia">Zirkonyum (CAD/CAM)</option>
+              <option value="emax">E-Max / Lamina</option>
+              <option value="implant">İmplant Üstü Hibrit</option>
+            </select>
+
+            {/* Teknisyen Filtresi */}
+            <select
+              value={filterTechnician}
+              onChange={(e) => setFilterTechnician(e.target.value)}
+              className="kanban-filter-select"
+            >
+              <option value="all">👷 Tüm Teknisyenler</option>
+              {technicians.map(t => (
+                <option key={t} value={t.split(' ')[0]}>{t}</option>
+              ))}
+            </select>
+
+            {/* Filtreleri Temizle */}
+            {isFiltered && (
+              <button
+                type="button"
+                className="btn-dental btn-dental-secondary btn-dental-sm"
+                onClick={resetFilters}
+                style={{ fontSize: '0.78rem', color: '#dc2626' }}
+              >
+                <X size={14} />
+                <span>Temizle</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MOBİL İSTASYON HIZLI GEÇİŞ SEKMELERİ (Kolay Tek Parmak Kullanımı) */}
+      {viewMode === 'active_pipeline' && orders.length > 0 && (
+        <div className="kanban-mobile-station-tabs">
+          <button
+            type="button"
+            className={`kanban-station-tab-btn ${activeMobileStation === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveMobileStation('all')}
+          >
+            <span>🌟 Tümü ({filteredActiveOrders.length})</span>
+          </button>
+          {STATIONS.map(st => {
+            const count = filteredActiveOrders.filter(o => {
+              const curStep = o.steps?.[o.currentStepIndex];
+              return curStep && st.filter(curStep);
+            }).length;
+
+            return (
+              <button
+                key={st.id}
+                type="button"
+                className={`kanban-station-tab-btn ${activeMobileStation === st.id ? 'active' : ''}`}
+                onClick={() => setActiveMobileStation(st.id)}
+              >
+                <span>{st.title}</span>
+                <span className={`station-tab-badge ${count > 0 ? 'has-jobs' : ''}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -396,8 +448,8 @@ export const KanbanView = () => {
 
       {/* GÖRÜNÜM 1: AKTİF ÜRETİM KANBAN İSTASYONLARI */}
       {viewMode === 'active_pipeline' && orders.length > 0 && (
-        <div className="kanban-board-container">
-          {STATIONS.map(st => {
+        <div className={`kanban-board-container ${activeMobileStation !== 'all' ? 'has-single-station' : ''}`}>
+          {(activeMobileStation === 'all' ? STATIONS : STATIONS.filter(s => s.id === activeMobileStation)).map(st => {
             // Bu istasyona uyan siparişler
             const matchingOrders = filteredActiveOrders.filter(o => {
               const curStep = o.steps?.[o.currentStepIndex];
@@ -408,7 +460,7 @@ export const KanbanView = () => {
             return (
               <div
                 key={st.id}
-                className={`kanban-station-col ${dragOverStationId === st.id ? 'drag-over' : ''}`}
+                className={`kanban-station-col ${activeMobileStation !== 'all' ? 'is-single-station' : ''} ${dragOverStationId === st.id ? 'drag-over' : ''}`}
                 onDragOver={(e) => handleDragOver(e, st.id)}
                 onDragLeave={(e) => handleDragLeave(e, st.id)}
                 onDrop={(e) => handleDrop(e, st)}

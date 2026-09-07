@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { OrderModal } from './components/OrderModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 // Sayfalar
 import { Dashboard } from './views/Dashboard';
@@ -78,6 +79,9 @@ const AppLayout = () => {
 
       {/* Ücretsiz Veritabanı Ayarları Modalı */}
       <DatabaseConfigModal />
+
+      {/* Mobil Alt Navigasyon Çubuğu */}
+      <MobileBottomNav />
 
       {/* Toast Bildirimleri */}
       <ToastNotification />

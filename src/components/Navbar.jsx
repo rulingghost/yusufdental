@@ -15,35 +15,35 @@ export const Navbar = ({ onToggleSidebar }) => {
 
   return (
     <header className="top-navbar">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div className="navbar-left-group">
+        {/* Mobil Hamburger Menü Butonu */}
         <button
           type="button"
-          className="btn-dental btn-dental-secondary btn-dental-sm"
+          className="btn-dental btn-dental-secondary btn-dental-sm navbar-hamburger-btn"
           onClick={onToggleSidebar}
-          style={{ display: 'none' }}
+          aria-label="Menüyü Aç"
         >
-          <Menu size={18} />
+          <Menu size={20} />
         </button>
 
         <div className="top-navbar-search">
           <Search size={18} color="var(--text-muted)" />
           <input
             type="text"
-            placeholder="Sipariş no, hasta adı, hekim, klinik veya diş no ara..."
+            placeholder="Sipariş, hasta, hekim veya klinik ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {/* Ücretsiz Veritabanı Durumu & Ayarları */}
+      <div className="navbar-right-group">
+        {/* Veritabanı Durumu Butonu */}
         <button
           type="button"
-          className="btn-dental btn-dental-secondary"
+          className="btn-dental btn-dental-secondary navbar-db-btn"
           onClick={() => setIsDbModalOpen && setIsDbModalOpen(true)}
-          title="Ücretsiz Veritabanı Durumu & Ayarları"
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px' }}
+          title="Supabase Bulut Veritabanı Durumu"
         >
           <span
             style={{
@@ -56,26 +56,25 @@ export const Navbar = ({ onToggleSidebar }) => {
             }}
           />
           <Database size={15} color="var(--dental-blue)" />
-          <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-            {dbStatus === 'connected' ? 'Veritabanı: Aktif' : 'Veritabanı'}
+          <span className="navbar-btn-text">
+            {dbStatus === 'connected' ? 'Bulut: Aktif' : 'Bulut'}
           </span>
         </button>
 
         {/* Yeni Sipariş Butonu */}
         <button
           type="button"
-          className="btn-dental btn-dental-primary"
+          className="btn-dental btn-dental-primary navbar-new-order-btn"
           onClick={() => setIsOrderModalOpen(true)}
         >
           <Plus size={18} strokeWidth={2.5} />
-          <span>Yeni İş Emri Başlat</span>
+          <span className="navbar-btn-text">Yeni İş Emri</span>
         </button>
 
         {/* Tema Değiştirici */}
         <button
           type="button"
-          className="btn-dental btn-dental-secondary"
-          style={{ padding: 9, borderRadius: 'var(--radius-md)' }}
+          className="btn-dental btn-dental-secondary navbar-theme-btn"
           onClick={toggleTheme}
           title={theme === 'light' ? 'Koyu Safir Temaya Geç' : 'Ferah Dental Temaya Geç'}
         >
