@@ -11,7 +11,8 @@ import {
   X,
   Layers,
   Sparkles,
-  Server
+  Server,
+  RotateCcw
 } from 'lucide-react';
 
 export const DatabaseConfigModal = () => {
@@ -27,6 +28,7 @@ export const DatabaseConfigModal = () => {
     companies,
     doctors,
     patients,
+    clearAllData,
     showToast
   } = useDental();
 
@@ -268,14 +270,42 @@ export const DatabaseConfigModal = () => {
         </div>
 
         {/* Alt Butonlar */}
-        <div className="dental-modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button
-            type="button"
-            className="btn-dental btn-dental-secondary"
-            onClick={() => setIsDbModalOpen(false)}
-          >
-            Vazgeç
-          </button>
+        <div className="dental-modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn-dental btn-dental-secondary"
+              onClick={() => setIsDbModalOpen(false)}
+            >
+              Vazgeç
+            </button>
+            <button
+              type="button"
+              className="btn-dental btn-dental-danger btn-dental-sm"
+              style={{ background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}
+              onClick={async () => {
+                const ok = window.confirm(
+                  'TÜM VERİLER SIFIRLANSIN MI?\n\n' +
+                  '• Tüm klinikler\n' +
+                  '• Tüm hekimler\n' +
+                  '• Tüm hastalar\n' +
+                  '• Tüm iş emirleri\n\n' +
+                  'Bulut veritabanı dahil tamamen silinecektir. Onaylıyor musunuz?'
+                );
+                if (ok) {
+                  await clearAllData();
+                  setIsDbModalOpen(false);
+                  if (window.location.hash !== '#/' && window.location.hash !== '') {
+                    window.location.hash = '#/';
+                  }
+                }
+              }}
+              title="Bulut ve yerel dahil tüm verileri sil"
+            >
+              <RotateCcw size={14} />
+              <span>Tüm Verileri Sıfırla</span>
+            </button>
+          </div>
 
           <button
             type="button"

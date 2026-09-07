@@ -8,7 +8,8 @@ import {
   saveDoctorToSupabase,
   deleteDoctorFromSupabase,
   savePatientToSupabase,
-  deletePatientFromSupabase
+  deletePatientFromSupabase,
+  clearAllFromSupabase
 } from '../services/supabaseService';
 
 const DentalContext = createContext(null);
@@ -321,14 +322,46 @@ export const DentalProvider = ({ children }) => {
   };
 
   // Tüm Verileri Tamamen Temizleme (Tertemiz Boş Başlangıç)
-  const clearAllData = () => {
+  const clearAllData = async () => {
     const empty = JSON.parse(JSON.stringify(EMPTY_INITIAL_DATA));
     setData(empty);
+    setTechniciansList(DEFAULT_TECHNICIANS);
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(empty));
+      localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(DEFAULT_TECHNICIANS));
+      const oldKeys = [
+        'dentallab_data_clean_v7',
+        'dentallab_data_clean_v6',
+        'dentallab_clean_db_v5',
+        'dentallab_clean_db_v4',
+        'dental_lab_pro_react_db_v2',
+        'dental_lab_pro_db_v1',
+        'dentallab_cloud_cache_v1',
+        'dentallab_cloud_cache_v2',
+        'dentallab_cloud_cache_v3'
+      ];
+      oldKeys.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(empty));
     } catch (e) {}
-    persistToDatabase(empty);
-    showToast('Tüm veriler sıfırlandı! Sisteme kendi verilerinizi ekleyebilirsiniz.', 'warning');
+
+    // 1. Supabase PostgreSQL veritabanındaki tüm tabloları temizle
+    try {
+      await clearAllFromSupabase();
+    } catch (err) {
+      console.error('Supabase sıfırlama hatası:', err);
+    }
+
+    // 2. /api/db endpointi varsa orayı da sıfırla
+    try {
+      await fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(empty)
+      });
+    } catch (e) {}
+
+    showToast('Tüm veriler ve bulut veritabanı başarıyla sıfırlandı! ✓', 'success');
   };
 
   const exportData = () => {

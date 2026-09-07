@@ -336,3 +336,20 @@ export async function deletePatientFromSupabase(patientId) {
     return false;
   }
 }
+
+// 10. TÜM VERİLERİ SUPABASE'DEN TAMAMEN SİL (SIFIRLAMA)
+export async function clearAllFromSupabase() {
+  try {
+    const headers = getHeaders();
+    // İlişkisel yabancı anahtar sırası: order_steps -> orders -> patients -> doctors -> companies
+    await fetch(`${SUPABASE_URL}/rest/v1/order_steps?step_order=gte.0`, { method: 'DELETE', headers });
+    await fetch(`${SUPABASE_URL}/rest/v1/orders?id=neq.dummy`, { method: 'DELETE', headers });
+    await fetch(`${SUPABASE_URL}/rest/v1/patients?id=neq.dummy`, { method: 'DELETE', headers });
+    await fetch(`${SUPABASE_URL}/rest/v1/doctors?id=neq.dummy`, { method: 'DELETE', headers });
+    await fetch(`${SUPABASE_URL}/rest/v1/companies?id=neq.dummy`, { method: 'DELETE', headers });
+    return true;
+  } catch (error) {
+    console.error('clearAllFromSupabase error:', error);
+    return false;
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
 import {
@@ -20,6 +20,7 @@ import {
 export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const { orders, exportData, importData, clearAllData, setIsDbModalOpen, setIsTeamModalOpen, technicians } = useDental();
   const fileInputRef = useRef(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   const activeOrdersCount = orders.filter(o => o.status === 'in_progress').length;
 
@@ -219,17 +220,45 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
           {/* TÜM VERİLERİ SIFIRLAMA BUTONU */}
           <button
             type="button"
+            disabled={isResetting}
             className="btn-dental btn-dental-danger btn-dental-sm"
-            style={{ width: '100%', justifyContent: 'flex-start', background: '#fee2e2', color: '#dc2626', fontWeight: 700 }}
-            onClick={() => {
-              if (window.confirm('TÜM VERİLER SIFIRLANSIN MI?\n\nKayıtlı tüm klinikler, doktorlar, hastalar ve iş emirleri silinecektir. Kendi verilerinizi sıfırdan girmek için bu işlemi onaylayabilirsiniz.')) {
-                clearAllData();
+            style={{
+              width: '100%',
+              justifyContent: 'flex-start',
+              background: isResetting ? '#f1f5f9' : '#fee2e2',
+              color: isResetting ? '#64748b' : '#dc2626',
+              fontWeight: 700,
+              cursor: isResetting ? 'not-allowed' : 'pointer'
+            }}
+            onClick={async () => {
+              const ok = window.confirm(
+                'TÜM VERİLER SIFIRLANSIN MI?\n\n' +
+                '• Tüm klinikler / firmalar\n' +
+                '• Tüm hekimler\n' +
+                '• Tüm hastalar\n' +
+                '• Tüm iş emirleri ve aşamaları\n\n' +
+                'Bulut veritabanı (Supabase) ve yerel önbellek dahil tamamen silinecektir.\n' +
+                'Sıfırdan kendi laboratuvar verilerinizi girmek için bu işlemi onaylayabilirsiniz.'
+              );
+              if (!ok) return;
+
+              try {
+                setIsResetting(true);
+                await clearAllData();
+                handleNavClick();
+                if (window.location.hash !== '#/' && window.location.hash !== '') {
+                  window.location.hash = '#/';
+                }
+              } catch (err) {
+                console.error('Sıfırlama hatası:', err);
+              } finally {
+                setIsResetting(false);
               }
             }}
-            title="Tüm verileri temizle, sıfırdan kendi kliniklerini ekle"
+            title="Tüm verileri temizle, sıfırdan kendi klinik ve işlerinizi ekleyin"
           >
-            <RotateCcw size={15} />
-            <span>🗑️ Tüm Verileri Sıfırla</span>
+            <RotateCcw size={15} className={isResetting ? 'spin-anim' : ''} />
+            <span>{isResetting ? 'Sıfırlanıyor...' : '🗑️ Tüm Verileri Sıfırla'}</span>
           </button>
         </li>
       </ul>
