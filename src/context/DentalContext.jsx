@@ -233,7 +233,7 @@ const EMPTY_INITIAL_DATA = {
 };
 
 export const DentalProvider = ({ children }) => {
-  const { currentUser, isCompany, isOperator } = useAuth();
+  const { currentUser, isCompany, isOperator, clearAdminRecovery } = useAuth();
   // Eski tüm mock önbellek anahtarlarını sil
   useEffect(() => {
     try {
@@ -490,6 +490,10 @@ export const DentalProvider = ({ children }) => {
         body: JSON.stringify(empty)
       });
     } catch (e) {}
+
+    if (typeof clearAdminRecovery === 'function') {
+      clearAdminRecovery();
+    }
 
     showToast('Tüm veriler ve bulut veritabanı başarıyla sıfırlandı! ✓', 'success');
   };

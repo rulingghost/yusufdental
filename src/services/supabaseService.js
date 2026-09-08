@@ -3,9 +3,9 @@
  * DentalLab Pro - PostgreSQL Entegrasyonu
  */
 
-const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) 
+export const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) 
   || 'https://naoraqzmhjvtoewmgjyq.supabase.co';
-const SUPABASE_KEY = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) 
+export const SUPABASE_KEY = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) 
   || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hb3JhcXptaGp2dG9ld21nanlxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODY2NTEsImV4cCI6MjEwNDM2MjY1MX0.cYoqUV25XQSZWnRu6qdPeD-mNyNpD7howik7op9oDrc';
 
 const getHeaders = () => ({

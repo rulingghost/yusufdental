@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { sendEmailOtp, verifyEmailOtp, isGmailAddress, normalizeEmail, maskEmail } from '../services/emailOtpService';
 
 const AuthContext = createContext(null);
 
@@ -179,6 +180,93 @@ export const AuthProvider = ({ children }) => {
     setUsers(prev => prev.filter(u => u.companyId !== companyId));
   };
 
+  const patchUser = (id, fields) => {
+    setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...fields } : u)));
+    setCurrentUser(prev => (prev && prev.id === id ? { ...prev, ...fields } : prev));
+  };
+
+  const getAdminUser = () => users.find(u => u.role === ROLES.admin) || null;
+
+  const setupAdminAccount = ({ email, password }) => {
+    const admin = getAdminUser();
+    if (!admin) return { ok: false, error: 'Yönetici hesabı bulunamadı.' };
+    if (admin.recoveryEmail) {
+      return { ok: false, error: 'Gmail zaten kayıtlı. Giriş için şifrenizi yazın.' };
+    }
+    const target = normalizeEmail(email);
+    if (!isGmailAddress(target)) {
+      return { ok: false, error: 'Yalnızca Gmail adresi kullanılabilir.' };
+    }
+    if (!password || String(password).length < 6) {
+      return { ok: false, error: 'Şifre en az 6 karakter olmalı.' };
+    }
+    const fields = {
+      recoveryEmail: target,
+      recoveryEmailVerified: true,
+      recoveryEmailVerifiedAt: new Date().toISOString(),
+      passwordHash: hashPassword(password)
+    };
+    patchUser(admin.id, fields);
+    const refreshed = { ...admin, ...fields };
+    setCurrentUser(refreshed);
+    persistSession(refreshed);
+    return { ok: true };
+  };
+
+  const startAdminPasswordReset = async () => {
+    const admin = getAdminUser();
+    if (!admin) return { ok: false, error: 'Yönetici hesabı bulunamadı.' };
+    if (!admin.recoveryEmail) {
+      return { ok: false, error: 'Kayıtlı Gmail yok. Girişte admin yazıp Gmail ekleyin.' };
+    }
+    const sent = await sendEmailOtp(admin.recoveryEmail);
+    if (!sent.ok) return sent;
+    return { ok: true, maskedEmail: maskEmail(admin.recoveryEmail), message: sent.message };
+  };
+
+  const finishAdminPasswordReset = async ({ code, newPassword }) => {
+    const admin = getAdminUser();
+    if (!admin) return { ok: false, error: 'Yönetici hesabı bulunamadı.' };
+    if (!admin.recoveryEmail) {
+      return { ok: false, error: 'Kayıtlı Gmail yok.' };
+    }
+    if (!newPassword || String(newPassword).length < 6) {
+      return { ok: false, error: 'Yeni şifre en az 6 karakter olmalı.' };
+    }
+    const verified = await verifyEmailOtp(admin.recoveryEmail, code);
+    if (!verified.ok) return verified;
+    const fields = { passwordHash: hashPassword(newPassword) };
+    patchUser(admin.id, fields);
+    const refreshed = { ...admin, ...fields };
+    setCurrentUser(refreshed);
+    persistSession(refreshed);
+    return { ok: true };
+  };
+
+  const clearAdminRecovery = () => {
+    setUsers(prev => prev.map(u => {
+      if (u.role !== ROLES.admin) return u;
+      return {
+        ...u,
+        recoveryEmail: null,
+        recoveryEmailVerified: false,
+        recoveryEmailVerifiedAt: null
+      };
+    }));
+    setCurrentUser(prev => {
+      if (!prev || prev.role !== ROLES.admin) return prev;
+      return {
+        ...prev,
+        recoveryEmail: null,
+        recoveryEmailVerified: false,
+        recoveryEmailVerifiedAt: null
+      };
+    });
+    try {
+      sessionStorage.removeItem('dentallab_email_otp_v1');
+    } catch (e) {}
+  };
+
   const isAdmin = currentUser?.role === ROLES.admin;
   const isOperator = currentUser?.role === ROLES.operator;
   const isCompany = currentUser?.role === ROLES.company;
@@ -192,12 +280,17 @@ export const AuthProvider = ({ children }) => {
         isAdmin,
         isOperator,
         isCompany,
+        adminAccount: getAdminUser(),
         login,
         logout,
         saveUser,
         deleteUser,
         upsertCompanyUser,
-        deleteUsersByCompanyId
+        deleteUsersByCompanyId,
+        setupAdminAccount,
+        startAdminPasswordReset,
+        finishAdminPasswordReset,
+        clearAdminRecovery
       }}
     >
       {children}

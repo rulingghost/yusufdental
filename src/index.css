@@ -2223,6 +2223,37 @@ a {
   font-weight: 700;
 }
 
+.login-success {
+  background: var(--status-completed-bg);
+  color: var(--status-completed);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.login-text-btn {
+  border: none;
+  background: transparent;
+  color: var(--dental-blue);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 0;
+  text-align: center;
+  width: 100%;
+}
+
+.login-text-btn:hover {
+  text-decoration: underline;
+}
+
+.login-text-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
 .login-hint {
   margin-top: 18px;
   padding-top: 14px;
