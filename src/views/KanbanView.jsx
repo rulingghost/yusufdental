@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDental } from '../context/DentalContext';
+import { useDental, isOrderFromCompletedImplant, normalizeStepName } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
+import { StepDateModal } from '../components/StepDateModal';
 import {
   Plus,
   RotateCcw,
@@ -36,13 +38,25 @@ export const KanbanView = () => {
     materials,
     technicians,
     advanceOrderToNextStep,
+    convertImplantToMdp,
     regressOrderToPrevStep,
     moveOrderToStep,
     restartOrder,
     setIsOrderModalOpen,
     setIsTeamModalOpen,
-    assignTechnicianToStep
+    assignTechnicianToStep,
+    approveOrder,
+    rejectOrder
   } = useDental();
+  const { isAdmin, isCompany } = useAuth();
+  const readOnly = isCompany;
+
+  const formatCardDate = (value) => {
+    if (!value) return 'Belirtilmedi';
+    const parts = String(value).split('-');
+    if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    return value;
+  };
 
   // 'active_pipeline' (Üretim hattı) vs 'completed_archive' (Tamamlananlar)
   const [viewMode, setViewMode] = useState('active_pipeline');
@@ -79,6 +93,8 @@ export const KanbanView = () => {
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterMaterial, setFilterMaterial] = useState('all');
   const [filterTechnician, setFilterTechnician] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('other');
+  const [dateModal, setDateModal] = useState(null);
 
   // Mobil İstasyon Filtresi ('all' veya istasyon id'si örn: 'col-model')
   const [activeMobileStation, setActiveMobileStation] = useState('all');
@@ -88,62 +104,51 @@ export const KanbanView = () => {
   const [draggedOrderId, setDraggedOrderId] = useState(null);
   const [dragOverStationId, setDragOverStationId] = useState(null);
 
-  // Sadece tamamlanmayan (aktif üretimdeki) siparişler
-  const activeOrders = orders.filter(o => o.status !== 'completed');
-  // Tamamlanan siparişler
+  const pendingOrders = orders.filter(o => o.status === 'pending_approval');
+  const activeOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'rejected');
   const completedOrders = orders.filter(o => o.status === 'completed');
 
-  // 8 Klinik Üretim İstasyonu
-  const STATIONS = [
-    {
-      id: 'col-model',
-      title: '1. Model & Alçı',
-      stepIndex: 0,
-      filter: s => s.name.includes('Model') || s.name.includes('Tarama') || s.name.includes('Alçı') || s.name.includes('Analog')
-    },
-    {
-      id: 'col-cad',
-      title: '2. Mum & CAD Dizayn',
-      stepIndex: 1,
-      filter: s => s.name.includes('Mum') || s.name.includes('CAD') || s.name.includes('Dayanak') || s.name.includes('Wax')
-    },
-    {
-      id: 'col-metal',
-      title: '3. Altyapı & CAM Freze',
-      stepIndex: 2,
-      filter: s => s.name.includes('Alt Yapı') || s.name.includes('Frezeleme') || s.name.includes('Presleme') || s.name.includes('Bar') || s.name.includes('Kazıma')
-    },
-    {
-      id: 'col-build',
-      title: '4. Katmanlama & Seramik',
-      stepIndex: 3,
-      filter: s => s.name.includes('Katmanlama') || s.name.includes('Opak') || s.name.includes('Divestment') || s.name.includes('Ayırma')
-    },
-    {
-      id: 'col-furnace',
-      title: '5. Fırınlama & Sinter',
-      stepIndex: 4,
-      filter: s => s.name.includes('Fırınlama') || s.name.includes('Sinterleme') || s.name.includes('Kristalizasyon') || s.name.includes('Sinter')
-    },
-    {
-      id: 'col-morph',
-      title: '6. Morfoloji & Uyum',
-      stepIndex: 5,
-      filter: s => s.name.includes('Morfoloji') || s.name.includes('Rötuş') || s.name.includes('Pasif Uyum') || s.name.includes('Tesviye') || s.name.includes('Vida')
-    },
-    {
-      id: 'col-glaze',
-      title: '7. Glaze, Renk & Cila',
-      stepIndex: 6,
-      filter: s => s.name.includes('Glaze') || s.name.includes('Karakterizasyon') || s.name.includes('Polisaj') || s.name.includes('Cila')
-    },
-    {
-      id: 'col-delivery',
-      title: '8. Kalite & Sevkiyat',
-      stepIndex: 7,
-      filter: s => s.name.includes('Kalite') || s.name.includes('Sevkiyat') || s.name.includes('Paket') || s.name.includes('Teslimat')
-    }
+  const ALL_STATIONS = [
+    { id: 'col-onay', title: 'Onay', stepName: 'Onay' },
+    { id: 'col-olcu-model', title: 'Ölçü + Model', stepName: 'Ölçü + Model' },
+    { id: 'col-abut-freze', title: 'Abutment + Freze', stepName: 'Abutment + Freze' },
+    { id: 'col-tork-olcu', title: 'Torklama + Ölçü', stepName: 'Torklama + Ölçü' },
+    { id: 'col-altyapi', title: 'Altyapı', stepName: 'Altyapı' },
+    { id: 'col-opak', title: 'Opak', stepName: 'Opak' },
+    { id: 'col-dentin', title: 'Dentin', stepName: 'Dentin' },
+    { id: 'col-prova', title: 'Prova', stepName: 'Prova' },
+    { id: 'col-glaze', title: 'Glaze', stepName: 'Glaze' }
   ];
+  const IMPLANT_STATIONS = ALL_STATIONS.filter(s => !['Opak', 'Dentin'].includes(s.stepName));
+  const OTHER_STATIONS = ALL_STATIONS.filter(s => !['Abutment + Freze', 'Torklama + Ölçü', 'Prova'].includes(s.stepName));
+  const STATIONS = filterCategory === 'implant' ? IMPLANT_STATIONS : OTHER_STATIONS;
+
+  const currentStepName = (order) => normalizeStepName(order.steps?.[order.currentStepIndex || 0]?.name || '');
+
+  const openAdvanceModal = (order, mode = 'next') => {
+    setDateModal({
+      orderId: order.id,
+      mode,
+      stepName: currentStepName(order)
+    });
+  };
+
+  const confirmAdvance = (date) => {
+    if (!dateModal) return;
+    if (dateModal.mode === 'toMdp') {
+      convertImplantToMdp(dateModal.orderId, date);
+      setFilterCategory('other');
+    } else if (dateModal.mode === 'drop') {
+      moveOrderToStep(dateModal.orderId, dateModal.targetIndex, date);
+    } else {
+      advanceOrderToNextStep(dateModal.orderId, date);
+    }
+    setDateModal(null);
+  };
+
+  useEffect(() => {
+    setActiveMobileStation('all');
+  }, [filterCategory]);
 
   // Filtrelenmiş Aktif Siparişler
   const filteredActiveOrders = activeOrders.filter(order => {
@@ -178,11 +183,19 @@ export const KanbanView = () => {
       if (!techName.includes(filterTechnician)) return false;
     }
 
+    // İmplant / Diğer kategorisi
+    if (filterCategory === 'implant' && order.materialId !== 'implant') return false;
+    if (filterCategory === 'other' && order.materialId === 'implant') return false;
+
     return true;
   });
 
   // Drag & Drop İşleyicileri
   const handleDragStart = (e, orderId) => {
+    if (readOnly) {
+      e.preventDefault();
+      return;
+    }
     setDraggedOrderId(orderId);
     e.dataTransfer.setData('text/plain', orderId);
     e.currentTarget.classList.add('is-dragging');
@@ -195,6 +208,7 @@ export const KanbanView = () => {
   };
 
   const handleDragOver = (e, stationId) => {
+    if (readOnly) return;
     e.preventDefault();
     if (dragOverStationId !== stationId) {
       setDragOverStationId(stationId);
@@ -210,21 +224,24 @@ export const KanbanView = () => {
   const handleDrop = (e, targetStation) => {
     e.preventDefault();
     setDragOverStationId(null);
+    if (readOnly) return;
     const orderId = draggedOrderId || e.dataTransfer.getData('text/plain');
+    setDraggedOrderId(null);
     if (!orderId) return;
 
     const order = orders.find(o => o.id === orderId);
     if (!order || !order.steps) return;
 
-    // Hedef istasyonun filtresine uyan aşama indeksini bul
-    let targetIndex = order.steps.findIndex(st => targetStation.filter(st));
-    if (targetIndex === -1) {
-      targetIndex = Math.min(targetStation.stepIndex, order.steps.length - 1);
-    }
+    const targetIndex = (order.steps || []).findIndex(s => normalizeStepName(s.name) === targetStation.stepName);
+    if (targetIndex < 0) return;
+    if (targetIndex === (order.currentStepIndex || 0)) return;
 
-    if (targetIndex >= 0) {
-      moveOrderToStep(orderId, targetIndex);
-    }
+    setDateModal({
+      mode: 'drop',
+      orderId,
+      targetIndex,
+      stepName: currentStepName(order) || targetStation.stepName
+    });
   };
 
   const handleRestartOrder = (orderId, e) => {
@@ -253,13 +270,15 @@ export const KanbanView = () => {
       <div className="page-header">
         <div>
           <div className="page-title-row">
-            <h2 className="page-title">Üretim İstasyonları</h2>
+            <h2 className="page-title">{isCompany ? 'İşlerimin Durumu' : 'Üretim İstasyonları'}</h2>
             <span className="page-count-badge">{activeOrders.length} Aktif Üretimde</span>
           </div>
           <p className="page-subtitle">
-            {viewMode === 'active_pipeline'
+            {isCompany
+              ? 'Kendi iş emirlerinizin hangi aşamada olduğunu ve teslim / prova tarihlerini buradan izleyin.'
+              : (viewMode === 'active_pipeline'
               ? 'Kartları "Sonraki Aşamaya Geçir" butonuyla veya sürükleyip bırakarak hızlıca bir sonraki istasyona aktarın.'
-              : 'Tamamlanan protez işleri arşivi. Dilediğiniz zaman "Yeniden Başlat" ile geri alabilirsiniz.'}
+              : 'Tamamlanan protez işleri arşivi. Dilediğiniz zaman "Yeniden Başlat" ile geri alabilirsiniz.')}
           </p>
         </div>
 
@@ -296,6 +315,8 @@ export const KanbanView = () => {
               <span>{areAllExpanded ? 'Kutuları Sadeleştir' : 'Tüm Kutuları Aç'}</span>
             </button>
 
+            {isAdmin && (
+              <>
             <button
               type="button"
               className="btn-dental btn-dental-secondary"
@@ -314,6 +335,8 @@ export const KanbanView = () => {
               <Plus size={17} strokeWidth={2.5} />
               <span>Yeni İş Emri Başlat</span>
             </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -366,36 +389,28 @@ export const KanbanView = () => {
             </button>
           </div>
 
-          {/* 1-Tıkla Hızlı Filtre Butonları (Teknisyenlerin En Çok Kullandığı) */}
+          {/* İmplant / Diğer hızlı kategori sekmeleri */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', width: '100%', marginTop: 6 }}>
             <button
               type="button"
-              className={`quick-chip-btn ${filterPriority === 'all' && !searchTerm ? 'active' : ''}`}
-              onClick={() => { setFilterPriority('all'); setSearchTerm(''); }}
+              className={`quick-chip-btn ${filterCategory === 'implant' ? 'active' : ''}`}
+              onClick={() => setFilterCategory('implant')}
             >
-              🌟 Tümü ({activeOrders.length})
+              İmplant ({activeOrders.filter(o => o.materialId === 'implant').length})
             </button>
             <button
               type="button"
-              className={`quick-chip-btn ${filterPriority === 'urgent' ? 'active' : ''}`}
-              style={{ color: filterPriority === 'urgent' ? '#fff' : 'var(--status-urgent)' }}
-              onClick={() => setFilterPriority(filterPriority === 'urgent' ? 'all' : 'urgent')}
+              className={`quick-chip-btn ${filterCategory === 'other' ? 'active' : ''}`}
+              onClick={() => setFilterCategory('other')}
             >
-              🔴 Sadece Aciller ({activeOrders.filter(o => o.priority === 'urgent').length})
-            </button>
-            <button
-              type="button"
-              className={`quick-chip-btn ${filterPriority === 'vip' ? 'active' : ''}`}
-              style={{ color: filterPriority === 'vip' ? '#fff' : 'var(--status-revision)' }}
-              onClick={() => setFilterPriority(filterPriority === 'vip' ? 'all' : 'vip')}
-            >
-              ⭐ VIP ({activeOrders.filter(o => o.priority === 'vip').length})
+              Diğer ({activeOrders.filter(o => o.materialId !== 'implant').length})
             </button>
           </div>
 
           {/* Filtre Seçicileri */}
           <div className={`kanban-filter-group ${showMobileFilters ? 'is-expanded' : ''}`}>
             {/* Klinik Filtresi */}
+            {!isCompany && (
             <select
               value={filterClinic}
               onChange={(e) => setFilterClinic(e.target.value)}
@@ -406,6 +421,7 @@ export const KanbanView = () => {
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+            )}
 
             {/* Öncelik Filtresi */}
             <select
@@ -426,13 +442,13 @@ export const KanbanView = () => {
               className="kanban-filter-select"
             >
               <option value="all">🦷 Tüm Materyaller</option>
-              <option value="porcelain">Porselen (PFM)</option>
-              <option value="zirconia">Zirkonyum (CAD/CAM)</option>
-              <option value="emax">E-Max / Lamina</option>
-              <option value="implant">İmplant Üstü Hibrit</option>
+              {Object.values(materials).map(m => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
             </select>
 
             {/* Teknisyen Filtresi */}
+            {!isCompany && (
             <select
               value={filterTechnician}
               onChange={(e) => setFilterTechnician(e.target.value)}
@@ -443,6 +459,7 @@ export const KanbanView = () => {
                 <option key={t} value={t.split(' ')[0]}>{t}</option>
               ))}
             </select>
+            )}
 
             {/* Filtreleri Temizle */}
             {isFiltered && (
@@ -460,6 +477,50 @@ export const KanbanView = () => {
         </div>
       )}
 
+      {isAdmin && viewMode === 'active_pipeline' && pendingOrders.length > 0 && (
+        <div className="dental-card" style={{ marginBottom: 16, borderLeft: '4px solid var(--status-revision)' }}>
+          <strong style={{ display: 'block', marginBottom: 10 }}>
+            Onay bekleyen iş emirleri ({pendingOrders.length})
+          </strong>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pendingOrders.map(order => {
+              const pat = patients.find(p => p.id === order.patientId);
+              const comp = companies.find(c => c.id === order.companyId);
+              return (
+                <div
+                  key={order.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    padding: '10px 12px',
+                    background: 'var(--bg-surface-elevated)',
+                    borderRadius: 8
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 800 }}>#{order.id} • {pat?.name || 'Hasta'}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      {comp?.name || '-'} • {materials[order.materialId]?.name || order.materialId}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button type="button" className="btn-dental btn-dental-primary btn-dental-sm" onClick={() => openAdvanceModal(order, 'next')}>
+                      Onayla
+                    </button>
+                    <button type="button" className="btn-dental btn-dental-danger btn-dental-sm" onClick={() => rejectOrder(order.id)}>
+                      Reddet
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* MOBİL İSTASYON HIZLI GEÇİŞ SEKMELERİ (Kolay Tek Parmak Kullanımı) */}
       {viewMode === 'active_pipeline' && orders.length > 0 && (
         <div className="kanban-mobile-station-tabs">
@@ -471,10 +532,7 @@ export const KanbanView = () => {
             <span>🌟 Tümü ({filteredActiveOrders.length})</span>
           </button>
           {STATIONS.map(st => {
-            const count = filteredActiveOrders.filter(o => {
-              const curStep = o.steps?.[o.currentStepIndex];
-              return curStep && st.filter(curStep);
-            }).length;
+            const count = filteredActiveOrders.filter(o => currentStepName(o) === st.stepName).length;
 
             return (
               <button
@@ -521,11 +579,14 @@ export const KanbanView = () => {
             <Factory size={32} />
           </div>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: 6 }}>
-            Üretim Hattında Henüz İş Emri Bulunmuyor
+            {isCompany ? 'Henüz takip edilecek iş yok' : 'Üretim Hattında Henüz İş Emri Bulunmuyor'}
           </h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: 500, margin: '0 auto 20px' }}>
-            Sisteminiz tertemiz ve hazır. Sol menüden kliniklerinizi ve hekimlerinizi ekleyebilir, ardından yeni diş protez iş emirlerinizi başlatabilirsiniz.
+            {isCompany
+              ? 'Kliniğinize ait iş emirleri laboratuvara düştüğünde aşamasını ve teslim tarihini burada görürsünüz.'
+              : 'Sisteminiz tertemiz ve hazır. Sol menüden kliniklerinizi ve hekimlerinizi ekleyebilir, ardından yeni diş protez iş emirlerinizi başlatabilirsiniz.'}
           </p>
+          {isAdmin && (
           <button
             type="button"
             className="btn-dental btn-dental-primary"
@@ -534,20 +595,20 @@ export const KanbanView = () => {
             <Plus size={18} strokeWidth={2.5} />
             <span>İlk İş Emrini Başlat</span>
           </button>
+          )}
         </div>
       )}
 
       {/* GÖRÜNÜM 1: AKTİF ÜRETİM KANBAN İSTASYONLARI */}
       {viewMode === 'active_pipeline' && orders.length > 0 && (
-        <div className={`kanban-board-container ${activeMobileStation !== 'all' ? 'has-single-station' : ''}`}>
+        <div
+          className={`kanban-board-container ${activeMobileStation !== 'all' ? 'has-single-station' : ''}`}
+          style={{ '--kanban-cols': STATIONS.length }}
+        >
           {(activeMobileStation === 'all' ? STATIONS : STATIONS.filter(s => s.id === activeMobileStation)).map(st => {
             // Bu istasyona uyan siparişler (Acil ve en yakın teslim tarihliler otomatik en üstte)
             const matchingOrders = filteredActiveOrders
-              .filter(o => {
-                const curStep = o.steps?.[o.currentStepIndex];
-                if (!curStep) return false;
-                return st.filter(curStep);
-              })
+              .filter(o => currentStepName(o) === st.stepName)
               .sort((a, b) => {
                 if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
                 if (b.priority === 'urgent' && a.priority !== 'urgent') return 1;
@@ -567,7 +628,7 @@ export const KanbanView = () => {
                 {/* İstasyon Başlığı */}
                 <div className="kanban-station-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <strong style={{ fontSize: '0.92rem' }}>{st.title}</strong>
+                    <strong>{st.title}</strong>
                   </div>
                   <span
                     style={{
@@ -612,6 +673,8 @@ export const KanbanView = () => {
                       const totalSteps = order.steps?.length || 1;
                       const curIndex = order.currentStepIndex || 0;
                       const isLastStep = curIndex >= totalSteps - 1;
+                      const isImplantLastStage = order.materialId === 'implant' && isLastStep;
+                      const fromImplant = isOrderFromCompletedImplant(order);
 
                       const completedCount = (order.steps || []).filter(s => s.status === 'completed').length;
                       const pct = Math.round((completedCount / totalSteps) * 100);
@@ -630,7 +693,7 @@ export const KanbanView = () => {
                           key={order.id}
                           className={`job-card ${isExpanded ? 'is-expanded' : ''}`}
                           data-priority={order.priority}
-                          draggable={true}
+                          draggable={!readOnly}
                           onDragStart={(e) => handleDragStart(e, order.id)}
                           onDragEnd={handleDragEnd}
                           onClick={(e) => toggleCardExpand(order.id, e)}
@@ -669,6 +732,20 @@ export const KanbanView = () => {
                                 >
                                   {materials[order.materialId]?.name?.split(' ')[0] || order.materialId} • {order.shade}
                                 </span>
+                                {fromImplant && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.66rem',
+                                      fontWeight: 800,
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      color: 'var(--status-completed)',
+                                      background: 'var(--status-completed-bg)'
+                                    }}
+                                  >
+                                    İmplant tamamlandı
+                                  </span>
+                                )}
                               </div>
 
                               {/* Hasta Adı */}
@@ -679,16 +756,20 @@ export const KanbanView = () => {
 
                             {/* Sağ Üst: Hızlı İlerletme & Genişletme İkonu */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              {!isExpanded && (
+                              {!isExpanded && !readOnly && (
                                 <button
                                   type="button"
                                   className="job-regress-btn"
                                   style={{ width: 26, height: 26, minHeight: 'unset', padding: 0, borderRadius: 6, background: 'rgba(2, 132, 199, 0.08)', color: 'var(--dental-blue)', border: 'none' }}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    advanceOrderToNextStep(order.id);
+                                    if (isImplantLastStage) {
+                                      setExpandedCardIds(prev => ({ ...prev, [order.id]: true }));
+                                      return;
+                                    }
+                                    openAdvanceModal(order, 'next');
                                   }}
-                                  title={isLastStep ? 'İşi Bitir' : 'Sonraki Aşamaya İlerlet'}
+                                  title={isImplantLastStage ? 'Son etap: Bitir veya MDP ye geç' : (isLastStep ? 'İşi Bitir' : 'Sonraki Aşamaya İlerlet')}
                                 >
                                   <Check size={14} strokeWidth={2.5} />
                                 </button>
@@ -707,6 +788,26 @@ export const KanbanView = () => {
                             <span style={{ fontWeight: 700, color: 'var(--dental-blue)', fontSize: '0.72rem' }}>
                               %{pct} ({curIndex + 1}/{totalSteps})
                             </span>
+                          </div>
+
+                          <div
+                            style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', flexShrink: 0 }}>📅 Teslim</span>
+                              <strong style={{ fontSize: '0.78rem' }}>{formatCardDate(order.deliveryDate)}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', flexShrink: 0 }}>🦷 Prova</span>
+                              <strong style={{ fontSize: '0.78rem' }}>{formatCardDate(order.trialDate)}</strong>
+                            </div>
+                            {(order.steps || []).filter(s => s.completedDate).slice(-1).map(s => (
+                              <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', flexShrink: 0 }}>✓ {s.name}</span>
+                                <strong style={{ fontSize: '0.78rem' }}>{formatCardDate(s.completedDate)}</strong>
+                              </div>
+                            ))}
                           </div>
 
                           {/* İnce Şık İlerleme Çubuğu */}
@@ -731,18 +832,14 @@ export const KanbanView = () => {
                                   <span style={{ fontWeight: 600 }}>{doc?.name || '-'}</span>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <span style={{ color: 'var(--text-secondary)' }}>📅 Teslim Tarihi:</span>
-                                  <span style={{ fontWeight: 700, color: order.priority === 'urgent' ? '#dc2626' : 'var(--text-primary)' }}>
-                                    {order.deliveryDate || '-'}
-                                  </span>
-                                </div>
-
                                 {/* Sorumlu Teknisyen Seçimi */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
                                   <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <User size={12} color="var(--dental-blue)" /> Teknisyen:
                                   </span>
+                                  {readOnly ? (
+                                    <span style={{ fontWeight: 600 }}>{curStep?.technician || 'Atanmamış'}</span>
+                                  ) : (
                                   <select
                                     value={curStep?.technician || ''}
                                     onChange={(e) => assignTechnicianToStep(order.id, curIndex, e.target.value)}
@@ -764,6 +861,7 @@ export const KanbanView = () => {
                                       <option key={t} value={t}>{t.split(' ')[0]}</option>
                                     ))}
                                   </select>
+                                  )}
                                 </div>
 
                                 {order.notes && (
@@ -773,8 +871,8 @@ export const KanbanView = () => {
                                 )}
                               </div>
 
-                              {/* HIZLI EYLEM BUTONLARI */}
-                              <div className="job-card-actions" style={{ marginTop: 10, paddingTop: 8 }}>
+                              {!readOnly && (
+                              <div className="job-card-actions" style={{ marginTop: 10, paddingTop: 8, flexWrap: 'wrap' }}>
                                 {curIndex > 0 && (
                                   <button
                                     type="button"
@@ -786,15 +884,37 @@ export const KanbanView = () => {
                                   </button>
                                 )}
 
-                                <button
-                                  type="button"
-                                  className="job-advance-btn"
-                                  onClick={() => advanceOrderToNextStep(order.id)}
-                                  title={isLastStep ? 'Bu işi bitir ve arşive aktar' : 'Sonraki üretim istasyonuna aktar'}
-                                >
-                                  <span>{isLastStep ? '✓ İşi Bitir' : '✓ İlerlet'}</span>
-                                  <ArrowRight size={13} />
-                                </button>
+                                {isImplantLastStage ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="job-advance-btn"
+                                      onClick={() => openAdvanceModal(order, 'next')}
+                                      title="İmplantı bitir ve arşive aktar"
+                                    >
+                                      <span>✓ Bitir</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="job-advance-btn job-porcelain-btn"
+                                      onClick={() => openAdvanceModal(order, 'toMdp')}
+                                      title="İmplantı bitir ve MDP iş emri aç"
+                                    >
+                                      <span>MDP'ye geç</span>
+                                      <ArrowRight size={13} />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="job-advance-btn"
+                                    onClick={() => openAdvanceModal(order, 'next')}
+                                    title={isLastStep ? 'Bu işi bitir ve arşive aktar' : 'Sonraki üretim istasyonuna aktar'}
+                                  >
+                                    <span>{currentStepName(order) === 'Onay' ? '✓ Onayla' : (isLastStep ? '✓ İşi Bitir' : '✓ İlerlet')}</span>
+                                    <ArrowRight size={13} />
+                                  </button>
+                                )}
 
                                 <button
                                   type="button"
@@ -806,7 +926,21 @@ export const KanbanView = () => {
                                   <Info size={12} />
                                   <span>Rehber</span>
                                 </button>
-
+                              </div>
+                              )}
+                              <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                                {readOnly && (
+                                  <button
+                                    type="button"
+                                    className="btn-dental btn-dental-secondary"
+                                    style={{ padding: '6px 8px', fontSize: '0.72rem' }}
+                                    onClick={() => setInfoModalOrder(order)}
+                                    title="Bu istasyonun rehberini ve talimatlarını gör"
+                                  >
+                                    <Info size={12} />
+                                    <span>Rehber</span>
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   className="btn-dental btn-dental-secondary"
@@ -815,6 +949,7 @@ export const KanbanView = () => {
                                   title="Tam Sipariş ve Aşama Sayfasına Git"
                                 >
                                   <ExternalLink size={12} />
+                                  {readOnly && <span>Detay</span>}
                                 </button>
                               </div>
                             </div>
@@ -837,7 +972,9 @@ export const KanbanView = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle2 size={20} color="var(--status-completed)" />
               <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-                Tamamlanan protez işleri üretim hattında kalabalık yaratmaması için burada arşivlenir. Kliniğin revizyon veya ilave isteğinde <strong style={{ color: 'var(--dental-blue)' }}>"İşlemi Yeniden Başlat"</strong> butonuyla hemen üretim hattına geri alabilirsiniz.
+                {isCompany
+                  ? 'Tamamlanan iş emirleriniz burada arşivlenir. Hasta, hekim, teslim tarihi ve aşama bilgilerini görüntüleyebilirsiniz.'
+                  : <>Tamamlanan protez işleri üretim hattında kalabalık yaratmaması için burada arşivlenir. Kliniğin revizyon veya ilave isteğinde <strong style={{ color: 'var(--dental-blue)' }}>"İşlemi Yeniden Başlat"</strong> butonuyla hemen üretim hattına geri alabilirsiniz.</>}
               </span>
             </div>
           </div>
@@ -876,6 +1013,11 @@ export const KanbanView = () => {
                         <span className="badge-pill badge-completed" style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
                           Tamamlandı ✓
                         </span>
+                        {isOrderFromCompletedImplant(order) && (
+                          <span className="badge-pill badge-completed" style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                            İmplant tamamlandı
+                          </span>
+                        )}
                       </div>
                       <div className="card-expand-indicator">
                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -905,11 +1047,13 @@ export const KanbanView = () => {
                           </span>
                         </div>
 
-                        {order.deliveryDate && (
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 8 }}>
-                            📅 Teslim: <strong>{order.deliveryDate}</strong>
-                          </div>
-                        )}
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>📅 Teslim:</span>
+                          <strong style={{ fontSize: '0.82rem' }}>{formatCardDate(order.deliveryDate)}</strong>
+                        </div>
 
                         {order.notes && (
                           <div style={{ marginTop: 6, padding: '6px 8px', background: 'var(--bg-surface-elevated)', borderRadius: 4, fontSize: '0.74rem', borderLeft: '2px solid var(--status-completed)' }}>
@@ -917,8 +1061,8 @@ export const KanbanView = () => {
                           </div>
                         )}
 
-                        {/* YENİDEN BAŞLAT & DETAY BUTONLARI */}
                         <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 8 }}>
+                          {!readOnly && (
                           <button
                             type="button"
                             className="btn-dental btn-dental-primary btn-dental-sm"
@@ -929,13 +1073,14 @@ export const KanbanView = () => {
                             <RotateCcw size={14} />
                             <span>Üretime Geri Al & Yeniden Başlat</span>
                           </button>
+                          )}
 
                           <button
                             type="button"
                             className="btn-dental btn-dental-secondary btn-dental-sm"
                             onClick={() => navigate('/orders/' + order.id)}
                           >
-                            <span>Detay & Düzenle</span>
+                            <span>{readOnly ? 'Detay' : 'Detay & Düzenle'}</span>
                             <ArrowRight size={13} />
                           </button>
                         </div>
@@ -1032,10 +1177,8 @@ export const KanbanView = () => {
                     </div>
                   </div>
                   <div style={{ padding: '10px 12px', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Nihai Teslim Tarihi:</div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: o.priority === 'urgent' ? 'var(--status-urgent)' : 'var(--text-primary)', marginTop: 2 }}>
-                      📅 {o.deliveryDate || '-'}
-                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4 }}>Nihai Teslim Tarihi:</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>{formatCardDate(o.deliveryDate)}</div>
                   </div>
                 </div>
 
@@ -1094,6 +1237,20 @@ export const KanbanView = () => {
           </div>
         );
       })()}
+
+      {dateModal && (
+        <StepDateModal
+          title={dateModal.mode === 'toMdp' ? 'MDP işine geç' : (dateModal.stepName === 'Onay' ? 'İş emrini onayla' : 'Aşama tarihi')}
+          subtitle={
+            dateModal.mode === 'toMdp'
+              ? 'İmplant tamamlanma tarihini seçin. Yeni MDP işi Diğer hattında görünecek.'
+              : `"${dateModal.stepName || 'Bu aşama'}" için tarihi girin.`
+          }
+          confirmLabel={dateModal.mode === 'toMdp' ? 'MDP ye geç' : (dateModal.stepName === 'Onay' ? 'Onayla ve başlat' : 'Kaydet ve ilerle')}
+          onConfirm={confirmAdvance}
+          onCancel={() => setDateModal(null)}
+        />
+      )}
     </div>
   );
 };

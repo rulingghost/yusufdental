@@ -200,10 +200,11 @@ class DentalLabApp {
     if (analyticsGrid) {
       // Materyal sayıları
       const matCounts = {
+        mdp: orders.filter(o => o.materialId === 'mdp').length,
         porcelain: orders.filter(o => o.materialId === 'porcelain').length,
         zirconia: orders.filter(o => o.materialId === 'zirconia').length,
-        emax: orders.filter(o => o.materialId === 'emax').length,
-        implant: orders.filter(o => o.materialId === 'implant').length
+        implant: orders.filter(o => o.materialId === 'implant').length,
+        lamina: orders.filter(o => o.materialId === 'lamina').length
       };
       const totalOrders = orders.length || 1;
 
@@ -227,15 +228,15 @@ class DentalLabApp {
           <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-                <span>Zirkonyum (CAD/CAM)</span>
-                <strong>${matCounts.zirconia} (%${Math.round(matCounts.zirconia / totalOrders * 100)})</strong>
+                <span>MDP</span>
+                <strong>${matCounts.mdp} (%${Math.round(matCounts.mdp / totalOrders * 100)})</strong>
               </div>
-              <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.zirconia / totalOrders * 100}%; background: var(--accent-cyan);"></div></div>
+              <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.mdp / totalOrders * 100}%; background: #d97706;"></div></div>
             </div>
 
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-                <span>Porselen (PFM Seramik)</span>
+                <span>Porselen</span>
                 <strong>${matCounts.porcelain} (%${Math.round(matCounts.porcelain / totalOrders * 100)})</strong>
               </div>
               <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.porcelain / totalOrders * 100}%; background: var(--mat-porcelain);"></div></div>
@@ -243,7 +244,15 @@ class DentalLabApp {
 
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-                <span>İmplant Üstü Protez</span>
+                <span>Zirkonyum</span>
+                <strong>${matCounts.zirconia} (%${Math.round(matCounts.zirconia / totalOrders * 100)})</strong>
+              </div>
+              <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.zirconia / totalOrders * 100}%; background: var(--accent-cyan);"></div></div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
+                <span>İmplant</span>
                 <strong>${matCounts.implant} (%${Math.round(matCounts.implant / totalOrders * 100)})</strong>
               </div>
               <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.implant / totalOrders * 100}%; background: var(--status-completed);"></div></div>
@@ -251,10 +260,10 @@ class DentalLabApp {
 
             <div>
               <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-                <span>E-Max Tam Seramik</span>
-                <strong>${matCounts.emax} (%${Math.round(matCounts.emax / totalOrders * 100)})</strong>
+                <span>Lamina</span>
+                <strong>${matCounts.lamina} (%${Math.round(matCounts.lamina / totalOrders * 100)})</strong>
               </div>
-              <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.emax / totalOrders * 100}%; background: var(--mat-emax);"></div></div>
+              <div class="progress-mini"><div class="progress-mini-fill" style="width: ${matCounts.lamina / totalOrders * 100}%; background: var(--mat-emax);"></div></div>
             </div>
           </div>
         </div>

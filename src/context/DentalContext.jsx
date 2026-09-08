@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from './AuthContext';
 import {
   fetchAllFromSupabase,
   saveOrderToSupabase,
@@ -14,84 +15,195 @@ import {
 
 const DentalContext = createContext(null);
 
-const STORAGE_KEY = 'dentallab_data_clean_v7';
+const STORAGE_KEY = 'dentallab_data_clean_v8';
 const DB_CONFIG_KEY = 'dentallab_database_config_v2';
 
-// Materyal ve Hazır Aşama Şablonları
-export const DEFAULT_MATERIALS = {
-  porcelain: {
-    id: 'porcelain',
-    name: 'Porselen Diş (PFM - Metal Destekli Seramik)',
-    badgeClass: 'badge-mat-porcelain',
-    color: '#e11d48',
-    description: 'Klasik metal altyapı üzerine katman katman seramik yığımı tekniği.',
-    steps: [
-      { order: 1, name: 'Model Elde Etme (Alçı Model)', description: 'Tip IV sert alçı ile çalışma modeli ve hareketli güdükler elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 3 },
-      { order: 2, name: 'Mum Modelleme (Wax-up)', description: 'Dişin formu mum yardımıyla model üzerinde elle veya CAD ile modellenir.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 4 },
-      { order: 3, name: 'Alt Yapı Hazırlığı (Metal Döküm)', description: 'Revetmana alma sonrası Cr-Co alaşım eritilerek dökülür veya lazer sinterlenir.', defaultTechnician: 'Ali Usta', estimatedHours: 6 },
-      { order: 4, name: 'Metal Tesviye & Oksit Fırınlama', description: 'Model üzerinde pasif uyum kontrolü, kumlama ve oksit fırınlaması uygulanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
-      { order: 5, name: 'Opak Uygulaması & Fırınlama', description: 'Metal rengini maskelemek için opak seramik sürülerek vakumlu fırında pişirilir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
-      { order: 6, name: 'Porselen Katmanlama (Build-up)', description: 'Katman katman dentin, mine ve transparan seramik yığılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 5 },
-      { order: 7, name: 'Fırınlama (Sinterleme)', description: 'Özel seramik fırınında 920-960°C sıcaklıkta sinterlenir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
-      { order: 8, name: 'Rötuş ve Morfoloji (Şekillendirme)', description: 'Doğal gelişim çizgileri, mamelonlar ve oklüzal anatomi verilir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 4 },
-      { order: 9, name: 'Glaze (Parlatma) ve Renklendirme', description: 'Yüzey cilası (glaze) ve VITA renk boyama fırınlaması yapılır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 },
-      { order: 10, name: 'Kalite Kontrol & Sevkiyat', description: 'Güdük modelde marjin açıklığı ve temas kontrolü yapılarak kutulanır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 1 }
-    ]
-  },
+export function idsMatch(a, b) {
+  if (a == null || b == null) return false;
+  return String(a) === String(b);
+}
 
+export function orderBelongsToCompany(order, companyId, patients = [], doctors = []) {
+  if (!order || companyId == null || companyId === '') return false;
+  if (idsMatch(order.companyId, companyId)) return true;
+  const pat = (patients || []).find(p => idsMatch(p.id, order.patientId));
+  if (pat && idsMatch(pat.companyId, companyId)) return true;
+  const doc = (doctors || []).find(d => idsMatch(d.id, order.doctorId));
+  if (doc && idsMatch(doc.companyId, companyId)) return true;
+  return false;
+}
+
+const APPROVAL_STEP = {
+  order: 1,
+  name: 'Onay',
+  description: 'Kullanıcıdan gelen iş emri yönetici onayını bekler.',
+  defaultTechnician: 'Yusuf Usta',
+  estimatedHours: 0
+};
+
+const OTHER_PIPELINE_STEPS = [
+  { ...APPROVAL_STEP },
+  { order: 2, name: 'Ölçü + Model', description: 'Klinik ölçüsü alınır, laboratuvara aktarılır ve çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 3 },
+  { order: 3, name: 'Altyapı', description: 'Restorasyon altyapısı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+  { order: 4, name: 'Opak', description: 'Opak uygulaması yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+  { order: 5, name: 'Dentin', description: 'Dentin katmanı yığılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
+  { order: 6, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
+];
+
+const IMPLANT_PIPELINE_STEPS = [
+  { ...APPROVAL_STEP },
+  { order: 2, name: 'Ölçü + Model', description: 'İmplant ölçüsü alınır ve analoglu çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 3 },
+  { order: 3, name: 'Abutment + Freze', description: 'Abutment / dayanak hazırlanır ve altyapı veya üstyapı frezelenir.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 7 },
+  { order: 4, name: 'Torklama + Ölçü', description: 'Abutment torklanır ve torklama sonrası kontrol ölçüsü alınır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+  { order: 5, name: 'Altyapı', description: 'Porselen öncesi altyapı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+  { order: 6, name: 'Prova', description: 'Altyapı / üstyapı provası yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+  { order: 7, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
+];
+
+export const DEFAULT_MATERIALS = {
+  mdp: {
+    id: 'mdp',
+    name: 'MDP (Metal Destekli Porselen)',
+    badgeClass: 'badge-mat-mdp',
+    color: '#d97706',
+    description: 'Metal destekli porselen restorasyon üretimi.',
+    steps: OTHER_PIPELINE_STEPS.map(s => ({ ...s }))
+  },
   zirconia: {
     id: 'zirconia',
-    name: 'Zirkonyum (Monolitik & Katmanlı Zirkon)',
+    name: 'Zirkonyum',
     badgeClass: 'badge-mat-zirconia',
     color: '#0284c7',
-    description: 'Yüksek biyouyumluluk ve dayanıklılık sunan 3D CAD/CAM zirkon blok üretimi.',
-    steps: [
-      { order: 1, name: 'Dijital Ölçü / 3D Model Tarama', description: 'Ağız içi tarayıcı datası veya model optik taranır.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 2 },
-      { order: 2, name: 'CAD Tasarımı (3D Dijital Dizayn)', description: 'Exocad veya 3Shape yazılımında anatomik form sanal tasarlanır.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 3 },
-      { order: 3, name: 'CAM Frezeleme (Milling Kazıma)', description: '5 eksenli CNC frezede multilayer zirkon diskten kazınır.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 4 },
-      { order: 4, name: 'Bloktan Ayırma & Likit Renklendirme', description: 'Pinler kesilir ve zirkon boyaları ile likit daldırma/fırçalama uygulanır.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 2 },
-      { order: 5, name: 'Yüksek Isı Sinterleme (1500°C)', description: 'Zirkon sinter fırınında 1500°C sıcaklıkta nihai sertliğe ulaştırılır.', defaultTechnician: 'Ali Usta', estimatedHours: 8 },
-      { order: 6, name: 'Morfoloji & Oklüzal Tesviye', description: 'Su soğutmalı elmas aletlerle artikülatörde temas ve marjin uyumu.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
-      { order: 7, name: 'Karakterizasyon & Glaze Fırını', description: 'Fissür efektleri, insizal boyalar ve glaze cilası uygulanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 },
-      { order: 8, name: 'Kalite Kontrol & Paketleme', description: 'Işık masasında çatlak ve basamak uyumu denetlenip steril paketlenir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 1 }
-    ]
+    description: 'Zirkonyum restorasyon üretimi.',
+    steps: OTHER_PIPELINE_STEPS.map(s => ({ ...s }))
   },
-
-  emax: {
-    id: 'emax',
-    name: 'Tam Seramik / E-Max (Lityum Disilikat)',
-    badgeClass: 'badge-mat-emax',
-    color: '#7c3aed',
-    description: 'Ön bölge için maksimum estetik ve ışık geçirgenliği sunan cam seramik.',
-    steps: [
-      { order: 1, name: 'Hassas Güdük Model & Tarama', description: 'Güdükler mikroskop altında traşlanır ve taranır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 2 },
-      { order: 2, name: 'Wax-up veya CAD Tasarımı', description: 'Lamina veya kron formu CAD ortamında modellenir.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 3 },
-      { order: 3, name: 'Presleme veya Islak Frezeleme', description: 'E-Max fırınında ingot preslenir veya CAM blok kazınır.', defaultTechnician: 'Ali Usta', estimatedHours: 4 },
-      { order: 4, name: 'Divestment & Asitleme', description: 'Kumlama ve ultrasonik banyoda temizlik yapılır.', defaultTechnician: 'Ali Usta', estimatedHours: 2 },
-      { order: 5, name: 'Kristalizasyon & Boyama', description: 'Disilikat kristalizasyon fırınlaması ve boyama uygulanır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
-      { order: 6, name: 'Glaze & Mekanik Cila', description: 'Yüksek parlaklık glaze fırını sonrası elmas keçe polisajı.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 },
-      { order: 7, name: 'Kalite Kontrol & Sevkiyat', description: 'Marjin inceliği mikroskop altında incelenir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 1 }
-    ]
-  },
-
   implant: {
     id: 'implant',
-    name: 'İmplant Üstü Protez (Vidalı / Simante Hibrit)',
+    name: 'İmplant',
     badgeClass: 'badge-mat-implant',
     color: '#059669',
-    description: 'İmplant analogları, özel titanyum Ti-Base ve vidalı hibrit üstyapı süreci.',
-    steps: [
-      { order: 1, name: 'Analog Model & Scan Body', description: 'İmplant analogları modele monte edilir ve scan body ile taranır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 3 },
-      { order: 2, name: 'Özel Dayanak (Ti-Base) Tasarımı', description: 'Dişeti çıkış profili ve vida açısı telafisi tasarlanır.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 4 },
-      { order: 3, name: 'Titanyum Bar / Altyapı Kazıma', description: 'Metal frezeleme ile titanyum bağlantı yuvaları üretilir.', defaultTechnician: 'Ali Usta', estimatedHours: 5 },
-      { order: 4, name: 'Pasif Uyum & Sheffield / Jig Testi', description: 'Çoklu implantlarda sıfır gerilimle oturma doğrulanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
-      { order: 5, name: 'Estetik Üstyapı Katmanlama', description: 'Ti-Base ile zirkon üstyapı rezin siman ile birleştirilir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 5 },
-      { order: 6, name: 'Vida Kanalı Düzenleme', description: 'Vida giriş kanalı ve tork anahtarı uyumu ayarlanır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
-      { order: 7, name: 'Glaze, Polisaj & Aksesuar Paketi', description: 'Cila tamamlanır; klinik vidası ve tork kartı paketlenir.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 },
-      { order: 8, name: 'Son Kalite & Teslimat', description: 'Tork testleri yapılarak teslimata hazır hale getirilir.', defaultTechnician: 'Yusuf Usta', estimatedHours: 1 }
-    ]
+    description: 'İmplant üstü protez üretimi. Son etaptan MDP (metal destekli porselen) işine geçilebilir.',
+    steps: IMPLANT_PIPELINE_STEPS.map(s => ({ ...s }))
+  },
+  lamina: {
+    id: 'lamina',
+    name: 'Lamina',
+    badgeClass: 'badge-mat-lamina',
+    color: '#7c3aed',
+    description: 'Lamina restorasyon üretimi.',
+    steps: OTHER_PIPELINE_STEPS.map(s => ({ ...s }))
   }
 };
+
+const MATERIAL_ID_ALIASES = {
+  emax: 'lamina',
+  porcelain: 'mdp'
+};
+
+export function normalizeStepName(name) {
+  const n = (name || '').trim();
+  if (n === 'Ölçü' || n === 'Model' || n === 'Ölçü + Model') return 'Ölçü + Model';
+  if (n === 'Abutment' || n === 'Freze' || n === 'Abutment + Freze') return 'Abutment + Freze';
+  if (n === 'Torklama' || n === 'Ölçü 2' || n === 'Torklama + Ölçü') return 'Torklama + Ölçü';
+  return n;
+}
+
+function mapLegacyStepName(name) {
+  return normalizeStepName(name);
+}
+
+function mergeById(localList = [], remoteList = []) {
+  const map = new Map();
+  (localList || []).forEach(item => {
+    if (item?.id == null) return;
+    map.set(String(item.id), item);
+  });
+  (remoteList || []).forEach(item => {
+    if (item?.id == null) return;
+    const key = String(item.id);
+    const local = map.get(key);
+    map.set(key, local ? { ...local, ...item } : item);
+  });
+  return Array.from(map.values());
+}
+
+function nextOrderId(orders) {
+  const year = new Date().getFullYear();
+  let max = 0;
+  (orders || []).forEach(o => {
+    const match = String(o.id || '').match(/ORD-\d+-(\d+)/);
+    if (match) max = Math.max(max, parseInt(match[1], 10));
+  });
+  const used = new Set((orders || []).map(o => o.id));
+  let n = max + 1;
+  let id = `ORD-${year}-${String(n).padStart(3, '0')}`;
+  while (used.has(id)) {
+    n += 1;
+    id = `ORD-${year}-${String(n).padStart(3, '0')}`;
+  }
+  return id;
+}
+
+export function migrateOrderToCurrentPipeline(order) {
+  if (!order) return order;
+  const materialId = MATERIAL_ID_ALIASES[order.materialId] || order.materialId;
+  const template = DEFAULT_MATERIALS[materialId] || DEFAULT_MATERIALS.mdp;
+  const resolvedId = template.id;
+  const templateNames = template.steps.map(s => s.name);
+  const currentNames = (order.steps || []).map(s => s.name);
+  const alreadyMigrated =
+    currentNames.length === templateNames.length &&
+    currentNames.every((name, idx) => name === templateNames[idx]);
+
+  if (alreadyMigrated && order.materialId === resolvedId) return order;
+
+  const isCompleted = order.status === 'completed';
+  const isPending = order.status === 'pending_approval' || order.status === 'rejected';
+  const oldIdx = order.currentStepIndex || 0;
+  const oldStep = (order.steps || [])[oldIdx];
+  const mappedName = isPending ? 'Onay' : mapLegacyStepName(oldStep?.name);
+
+  let newIdx = template.steps.findIndex(s => s.name === mappedName);
+  if (newIdx < 0) {
+    const oldLen = Math.max(1, (order.steps || []).length);
+    newIdx = Math.min(Math.floor((oldIdx / oldLen) * template.steps.length), template.steps.length - 1);
+  }
+  if (isCompleted) newIdx = template.steps.length - 1;
+  else if (!isPending && template.steps[newIdx]?.name === 'Onay') newIdx = Math.min(1, template.steps.length - 1);
+
+  const steps = template.steps.map((s, idx) => ({
+    order: s.order,
+    name: s.name,
+    description: s.description,
+    technician: (order.steps && order.steps[Math.min(oldIdx, Math.max(0, (order.steps || []).length - 1))]?.technician) || s.defaultTechnician || '',
+    notes: '',
+    status: isCompleted || idx < newIdx ? 'completed' : (idx === newIdx ? 'in_progress' : 'pending'),
+    startedAt: idx === newIdx ? (oldStep?.startedAt || null) : null,
+    completedAt: idx < newIdx ? (order.steps?.[Math.min(idx, Math.max(0, (order.steps || []).length - 1))]?.completedAt || null) : null,
+    completedDate: idx < newIdx ? (order.steps?.[Math.min(idx, Math.max(0, (order.steps || []).length - 1))]?.completedDate || null) : null
+  }));
+
+  return {
+    ...order,
+    materialId: resolvedId,
+    companyId: order.companyId != null ? String(order.companyId) : order.companyId,
+    steps,
+    currentStepIndex: newIdx
+  };
+}
+
+export function migrateOrdersToCurrentPipeline(orders) {
+  if (!Array.isArray(orders)) return [];
+  return orders.map(migrateOrderToCurrentPipeline);
+}
+
+export const IMPLANT_COMPLETED_LABEL = 'İmplant tamamlandı';
+
+export function isOrderFromCompletedImplant(order) {
+  if (!order) return false;
+  if (order.fromImplantId || order.implantCompleted) return true;
+  return (order.notes || '').includes(IMPLANT_COMPLETED_LABEL);
+}
 
 export const VITA_SHADES = [
   'A1', 'A2', 'A3', 'A3.5', 'A4',
@@ -121,6 +233,7 @@ const EMPTY_INITIAL_DATA = {
 };
 
 export const DentalProvider = ({ children }) => {
+  const { currentUser, isCompany, isOperator } = useAuth();
   // Eski tüm mock önbellek anahtarlarını sil
   useEffect(() => {
     try {
@@ -139,13 +252,16 @@ export const DentalProvider = ({ children }) => {
 
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('dentallab_data_clean_v7');
       if (saved) {
         const parsed = JSON.parse(saved);
         const isOldMock = parsed?.orders?.some(o => o.id === 'ORD-2026-001' || o.id === 'ORD-2026-002') ||
                           parsed?.companies?.some(c => c.name?.includes('Dentİstanbul'));
         if (parsed && Array.isArray(parsed.orders) && !isOldMock) {
-          return parsed;
+          return {
+            ...parsed,
+            orders: migrateOrdersToCurrentPipeline(parsed.orders)
+          };
         }
       }
     } catch (e) {
@@ -175,6 +291,7 @@ export const DentalProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
@@ -247,10 +364,19 @@ export const DentalProvider = ({ children }) => {
       // 1. Supabase PostgreSQL Veritabanı
       const remote = await fetchAllFromSupabase();
       if (remote) {
-        setData(remote);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(remote));
-        } catch (e) {}
+        const migratedRemote = migrateOrdersToCurrentPipeline(remote.orders || []);
+        setData(prev => {
+          const merged = {
+            companies: mergeById(prev.companies, remote.companies),
+            doctors: mergeById(prev.doctors, remote.doctors),
+            patients: mergeById(prev.patients, remote.patients),
+            orders: mergeById(prev.orders, migratedRemote)
+          };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
         setDbStatus('connected');
         return;
       }
@@ -262,8 +388,12 @@ export const DentalProvider = ({ children }) => {
         if (result && result.data && Array.isArray(result.data.orders)) {
           const isMock = result.data.orders.some(o => o.id === 'ORD-2026-001');
           if (!isMock) {
-            setData(result.data);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(result.data));
+            const migrated = {
+              ...result.data,
+              orders: migrateOrdersToCurrentPipeline(result.data.orders)
+            };
+            setData(migrated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
           }
           setDbStatus('connected');
         }
@@ -379,8 +509,12 @@ export const DentalProvider = ({ children }) => {
     try {
       const parsed = JSON.parse(jsonString);
       if (parsed.orders !== undefined && parsed.companies !== undefined) {
-        setData(parsed);
-        persistToDatabase(parsed);
+        const migrated = {
+          ...parsed,
+          orders: migrateOrdersToCurrentPipeline(parsed.orders)
+        };
+        setData(migrated);
+        persistToDatabase(migrated);
         showToast('Veriler başarıyla yüklendi ve veritabanına aktarıldı!');
         return true;
       }
@@ -390,12 +524,53 @@ export const DentalProvider = ({ children }) => {
     return false;
   };
 
+  const denyProductionChange = () => {
+    if (isCompany || isOperator) {
+      showToast(
+        isCompany
+          ? 'Firma hesabı yalnızca işlerini takip edebilir.'
+          : 'Kullanıcı işleri ilerletemez; yalnızca kendi iş emrini onaylanana kadar düzenleyebilir.',
+        'error'
+      );
+      return true;
+    }
+    return false;
+  };
+
   // --- CRUD Metotları ---
   const saveOrder = (order) => {
     let finalOrder = { ...order };
+
+    if (isCompany) {
+      showToast('Firma hesabı iş emri oluşturamaz veya düzenleyemez.', 'error');
+      return null;
+    }
+
+    if (isOperator) {
+      const existing = finalOrder.id ? (data.orders || []).find(o => o.id === finalOrder.id) : null;
+      if (existing) {
+        if (existing.createdBy !== currentUser?.id || existing.status !== 'pending_approval') {
+          showToast('Onaylanan veya size ait olmayan iş emri düzenlenemez.', 'error');
+          return null;
+        }
+        finalOrder = {
+          ...existing,
+          ...finalOrder,
+          status: 'pending_approval',
+          createdBy: currentUser.id,
+          currentStepIndex: 0
+        };
+      } else {
+        finalOrder.status = 'pending_approval';
+        finalOrder.createdBy = currentUser?.id;
+        finalOrder.currentStepIndex = 0;
+      }
+    }
+
+    if (finalOrder.companyId != null) finalOrder.companyId = String(finalOrder.companyId);
+
     if (!finalOrder.id) {
-      const count = (data.orders.length + 1).toString().padStart(3, '0');
-      finalOrder.id = `ORD-${new Date().getFullYear()}-${count}`;
+      finalOrder.id = nextOrderId(data.orders);
       finalOrder.orderDate = finalOrder.orderDate || new Date().toISOString().split('T')[0];
     }
     setData(prev => {
@@ -413,7 +588,59 @@ export const DentalProvider = ({ children }) => {
     return finalOrder;
   };
 
+  const approveOrder = (orderId, completedDate = '') => {
+    if (denyProductionChange()) return;
+    const dateValue = completedDate || new Date().toISOString().split('T')[0];
+    const now = new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+    setData(prev => {
+      let changedOrder = null;
+      const orders = prev.orders.map(o => {
+        if (o.id !== orderId) return o;
+        const steps = (o.steps || []).map((step, idx) => {
+          if (idx === 0) {
+            return {
+              ...step,
+              status: 'completed',
+              completedAt: now,
+              completedDate: dateValue
+            };
+          }
+          if (idx === 1) {
+            return { ...step, status: 'in_progress', startedAt: step.startedAt || now };
+          }
+          return step;
+        });
+        changedOrder = {
+          ...o,
+          status: 'in_progress',
+          currentStepIndex: Math.min(1, Math.max(0, steps.length - 1)),
+          steps
+        };
+        return changedOrder;
+      });
+      if (changedOrder) saveOrderToSupabase(changedOrder);
+      return { ...prev, orders };
+    });
+    showToast('İş emri onaylandı ve üretim hattına alındı.', 'success');
+  };
+
+  const rejectOrder = (orderId) => {
+    if (denyProductionChange()) return;
+    setData(prev => {
+      let changedOrder = null;
+      const orders = prev.orders.map(o => {
+        if (o.id !== orderId) return o;
+        changedOrder = { ...o, status: 'rejected' };
+        return changedOrder;
+      });
+      if (changedOrder) saveOrderToSupabase(changedOrder);
+      return { ...prev, orders };
+    });
+    showToast('İş emri reddedildi.', 'warning');
+  };
+
   const addStepToOrder = (orderId, newStepName, newStepDesc = '', technician = '') => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -438,6 +665,7 @@ export const DentalProvider = ({ children }) => {
   };
 
   const removeStepFromOrder = (orderId, stepIndex) => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -455,6 +683,7 @@ export const DentalProvider = ({ children }) => {
   };
 
   const editStepInOrder = (orderId, stepIndex, updatedData) => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -472,7 +701,8 @@ export const DentalProvider = ({ children }) => {
     showToast('Aşama güncellendi.', 'success');
   };
 
-  const updateStepStatus = (orderId, stepIndex, newStatus, technician = '', notes = '') => {
+  const updateStepStatus = (orderId, stepIndex, newStatus, technician = '', notes = '', completedDate = '') => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -491,6 +721,10 @@ export const DentalProvider = ({ children }) => {
           updated.currentStepIndex = stepIndex;
         } else if (newStatus === 'completed') {
           step.completedAt = now;
+          step.completedDate = completedDate || new Date().toISOString().split('T')[0];
+          if (step.name === 'Onay' || o.status === 'pending_approval') {
+            updated.status = 'in_progress';
+          }
           if (stepIndex + 1 < updated.steps.length) {
             updated.currentStepIndex = stepIndex + 1;
             if (updated.steps[stepIndex + 1].status === 'pending') {
@@ -518,14 +752,92 @@ export const DentalProvider = ({ children }) => {
     showToast('Aşama durumu güncellendi.');
   };
 
-  const advanceOrderToNextStep = (orderId) => {
+  const advanceOrderToNextStep = (orderId, completedDate = '') => {
+    if (denyProductionChange()) return;
     const order = data.orders.find(o => o.id === orderId);
     if (!order || !order.steps) return;
     const curIdx = order.currentStepIndex || 0;
-    updateStepStatus(orderId, curIdx, 'completed');
+    const current = order.steps[curIdx];
+    if (current?.name === 'Onay' || order.status === 'pending_approval') {
+      approveOrder(orderId, completedDate);
+      return;
+    }
+    updateStepStatus(orderId, curIdx, 'completed', current?.technician || '', current?.notes || '', completedDate);
   };
 
+  const convertImplantToMdp = (implantOrderId, completedDate = '') => {
+    if (denyProductionChange()) return null;
+    const implant = data.orders.find(o => o.id === implantOrderId);
+    if (!implant || implant.materialId !== 'implant') return null;
+
+    const now = new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+    const today = completedDate || new Date().toISOString().split('T')[0];
+
+    const completedImplant = {
+      ...implant,
+      status: 'completed',
+      currentStepIndex: Math.max(0, (implant.steps || []).length - 1),
+      steps: (implant.steps || []).map((step, idx, arr) => ({
+        ...step,
+        status: 'completed',
+        completedAt: step.completedAt || (idx === arr.length - 1 ? now : step.completedAt),
+        completedDate: step.completedDate || (idx === arr.length - 1 ? today : step.completedDate)
+      }))
+    };
+
+    const template = DEFAULT_MATERIALS.mdp;
+    const mdpSteps = template.steps.map((s, idx) => ({
+      order: s.order,
+      name: s.name,
+      description: s.description,
+      status: idx === 0 ? 'completed' : (idx === 1 ? 'in_progress' : 'pending'),
+      technician: s.defaultTechnician || 'Yusuf Usta',
+      startedAt: idx === 1 ? now : null,
+      completedAt: idx === 0 ? now : null,
+      completedDate: idx === 0 ? today : null,
+      notes: ''
+    }));
+
+    const newId = nextOrderId(data.orders);
+
+    const implantNote = `${IMPLANT_COMPLETED_LABEL} (Kaynak iş emri: #${implant.id})`;
+    const mdpOrder = {
+      id: newId,
+      companyId: implant.companyId != null ? String(implant.companyId) : implant.companyId,
+      doctorId: implant.doctorId,
+      patientId: implant.patientId,
+      materialId: 'mdp',
+      teeth: implant.teeth || [],
+      shade: implant.shade || 'A2',
+      priority: implant.priority || 'normal',
+      status: 'in_progress',
+      createdBy: implant.createdBy || null,
+      orderDate: today,
+      trialDate: implant.trialDate || '',
+      deliveryDate: implant.deliveryDate || today,
+      price: implant.price || 0,
+      notes: implant.notes ? `${implantNote}\n${implant.notes}` : implantNote,
+      currentStepIndex: 1,
+      steps: mdpSteps,
+      fromImplantId: implant.id,
+      implantCompleted: true
+    };
+
+    setData(prev => {
+      const orders = prev.orders.map(o => o.id === implant.id ? completedImplant : o);
+      orders.unshift(mdpOrder);
+      return { ...prev, orders };
+    });
+    saveOrderToSupabase(completedImplant);
+    saveOrderToSupabase(mdpOrder);
+    showToast(`İmplant bitti. MDP iş emri #${newId} oluşturuldu.`, 'success');
+    return mdpOrder;
+  };
+
+  const convertImplantToPorcelain = convertImplantToMdp;
+
   const regressOrderToPrevStep = (orderId) => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -555,26 +867,39 @@ export const DentalProvider = ({ children }) => {
     showToast('İş emri bir önceki aşamaya geri alındı.', 'warning');
   };
 
-  const moveOrderToStep = (orderId, targetStepIndex) => {
+  const moveOrderToStep = (orderId, targetStepIndex, completedDate = '') => {
+    if (denyProductionChange()) return;
+    const dateValue = completedDate || new Date().toISOString().split('T')[0];
+    const now = new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
         if (o.id !== orderId) return o;
+        const curIdx = o.currentStepIndex || 0;
         const steps = (o.steps || []).map((step, idx) => {
           if (idx < targetStepIndex) {
-            return { ...step, status: 'completed' };
+            return {
+              ...step,
+              status: 'completed',
+              completedAt: step.completedAt || now,
+              completedDate: idx >= curIdx ? dateValue : (step.completedDate || dateValue)
+            };
           } else if (idx === targetStepIndex) {
-            return { ...step, status: 'in_progress' };
+            return { ...step, status: 'in_progress', startedAt: step.startedAt || now };
           } else {
-            return { ...step, status: 'pending' };
+            return { ...step, status: 'pending', completedAt: null, startedAt: null, completedDate: null };
           }
         });
+        const leavingOnay = (o.steps || [])[0]?.name === 'Onay' && targetStepIndex > 0;
         changedOrder = {
           ...o,
-          status: targetStepIndex >= steps.length ? 'completed' : 'in_progress',
+          status: targetStepIndex >= steps.length ? 'completed' : (leavingOnay || o.status === 'pending_approval' ? 'in_progress' : (targetStepIndex > 0 ? 'in_progress' : o.status)),
           currentStepIndex: Math.min(targetStepIndex, steps.length - 1),
           steps
         };
+        if (changedOrder.status === 'pending_approval' && targetStepIndex > 0) {
+          changedOrder.status = 'in_progress';
+        }
         return changedOrder;
       });
       if (changedOrder) saveOrderToSupabase(changedOrder);
@@ -584,6 +909,7 @@ export const DentalProvider = ({ children }) => {
   };
 
   const restartOrder = (orderId, targetStepIndex = 0, restartReason = '') => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -624,6 +950,7 @@ export const DentalProvider = ({ children }) => {
   };
 
   const deleteOrder = (id) => {
+    if (denyProductionChange()) return;
     setData(prev => ({ ...prev, orders: prev.orders.filter(o => o.id !== id) }));
     deleteOrderFromSupabase(id);
     showToast('İş emri silindi.', 'warning');
@@ -631,6 +958,7 @@ export const DentalProvider = ({ children }) => {
 
   // Teknisyen Ekleme / Çıkarma / Düzenleme
   const addTechnician = (name, role = 'Dental Teknisyen') => {
+    if (denyProductionChange()) return;
     if (!name || !name.trim()) return;
     const trimmed = name.trim();
     if (techniciansList.some(t => t.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -659,6 +987,7 @@ export const DentalProvider = ({ children }) => {
 
   // Belirli bir iş emrinin aşamasına sorumlu teknisyen atama
   const assignTechnicianToStep = (orderId, stepIndex, technician) => {
+    if (denyProductionChange()) return;
     setData(prev => {
       let changedOrder = null;
       const orders = prev.orders.map(o => {
@@ -678,6 +1007,21 @@ export const DentalProvider = ({ children }) => {
       return { ...prev, orders };
     });
     showToast(`Sorumlu teknisyen "${technician}" olarak güncellendi.`, 'success');
+  };
+
+  const updateOrderDates = (orderId, dates) => {
+    if (denyProductionChange()) return;
+    setData(prev => {
+      let changedOrder = null;
+      const orders = prev.orders.map(o => {
+        if (o.id !== orderId) return o;
+        changedOrder = { ...o, ...dates };
+        return changedOrder;
+      });
+      if (changedOrder) saveOrderToSupabase(changedOrder);
+      return { ...prev, orders };
+    });
+    showToast('Tarih güncellendi.', 'success');
   };
 
   // Küçük Tamamlandı Kutucuğu: Tek tıkla aşamayı tamamla veya geri al
@@ -700,6 +1044,7 @@ export const DentalProvider = ({ children }) => {
       savedObj.id = 'comp-' + Date.now();
       savedObj.createdAt = new Date().toISOString().split('T')[0];
     }
+    savedObj.id = String(savedObj.id);
     setData(prev => {
       let companies = [...prev.companies];
       const exists = companies.some(c => c.id === savedObj.id);
@@ -775,13 +1120,45 @@ export const DentalProvider = ({ children }) => {
     showToast('Hasta silindi.', 'warning');
   };
 
+  const scopedCompanies = useMemo(() => {
+    const all = data.companies || [];
+    if (!isCompany) return all;
+    if (!currentUser?.companyId) return [];
+    return all.filter(c => idsMatch(c.id, currentUser.companyId));
+  }, [data.companies, isCompany, currentUser]);
+
+  const scopedDoctors = useMemo(() => {
+    const all = data.doctors || [];
+    if (!isCompany) return all;
+    if (!currentUser?.companyId) return [];
+    return all.filter(d => idsMatch(d.companyId, currentUser.companyId));
+  }, [data.doctors, isCompany, currentUser]);
+
+  const scopedPatients = useMemo(() => {
+    const all = data.patients || [];
+    if (!isCompany) return all;
+    if (!currentUser?.companyId) return [];
+    return all.filter(p => idsMatch(p.companyId, currentUser.companyId));
+  }, [data.patients, isCompany, currentUser]);
+
+  const scopedOrders = useMemo(() => {
+    const all = data.orders || [];
+    if (isCompany) {
+      const cid = currentUser?.companyId;
+      if (!cid) return [];
+      return all.filter(o => orderBelongsToCompany(o, cid, data.patients, data.doctors));
+    }
+    if (isOperator && currentUser?.id) return all.filter(o => o.createdBy === currentUser.id);
+    return all;
+  }, [data.orders, data.patients, data.doctors, isCompany, isOperator, currentUser]);
+
   return (
     <DentalContext.Provider
       value={{
-        orders: data.orders || [],
-        companies: data.companies || [],
-        doctors: data.doctors || [],
-        patients: data.patients || [],
+        orders: scopedOrders,
+        companies: scopedCompanies,
+        doctors: scopedDoctors,
+        patients: scopedPatients,
         materials: DEFAULT_MATERIALS,
         vitaShades: VITA_SHADES,
         technicians: techniciansList.map(t => t.name),
@@ -790,6 +1167,7 @@ export const DentalProvider = ({ children }) => {
         removeTechnician,
         updateTechnician,
         assignTechnicianToStep,
+        updateOrderDates,
         toggleStepCompletion,
         isTeamModalOpen,
         setIsTeamModalOpen,
@@ -801,6 +1179,8 @@ export const DentalProvider = ({ children }) => {
         showToast,
         isOrderModalOpen,
         setIsOrderModalOpen,
+        editingOrder,
+        setEditingOrder,
         isDbModalOpen,
         setIsDbModalOpen,
         dbConfig,
@@ -812,11 +1192,15 @@ export const DentalProvider = ({ children }) => {
         exportData,
         importData,
         saveOrder,
+        approveOrder,
+        rejectOrder,
         addStepToOrder,
         removeStepFromOrder,
         editStepInOrder,
         updateStepStatus,
         advanceOrderToNextStep,
+        convertImplantToPorcelain,
+        convertImplantToMdp,
         regressOrderToPrevStep,
         moveOrderToStep,
         restartOrder,

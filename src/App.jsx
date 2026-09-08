@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DentalProvider, useDental } from './context/DentalContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
 import { OrderModal } from './components/OrderModal';
 import { DatabaseConfigModal } from './components/DatabaseConfigModal';
 import { TeamModal } from './components/TeamModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { LoginView } from './views/LoginView';
 
-// Sayfalar
 import { Dashboard } from './views/Dashboard';
 import { KanbanView } from './views/KanbanView';
 import { OrdersView } from './views/OrdersView';
@@ -17,8 +18,8 @@ import { CompaniesView } from './views/CompaniesView';
 import { DoctorsView } from './views/DoctorsView';
 import { PatientsView } from './views/PatientsView';
 import { MaterialsView } from './views/MaterialsView';
+import { UsersView } from './views/UsersView';
 
-// Toast Bildirim Bileşeni
 const ToastNotification = () => {
   const { toast } = useDental();
   if (!toast) return null;
@@ -28,18 +29,29 @@ const ToastNotification = () => {
     : (toast.type === 'warning' ? 'var(--status-revision)' : 'var(--dental-blue)');
 
   return (
-    <div
-      className="dental-toast-notification"
-      style={{ borderLeftColor }}
-    >
+    <div className="dental-toast-notification" style={{ borderLeftColor }}>
       <span>{toast.type === 'error' ? '✕' : (toast.type === 'warning' ? '⚠️' : '✓')}</span>
       <span>{toast.message}</span>
     </div>
   );
 };
 
+const RoleRedirect = () => {
+  const { isCompany, isOperator } = useAuth();
+  if (isCompany) return <Navigate to="/orders" replace />;
+  if (isOperator) return <Navigate to="/orders" replace />;
+  return <Dashboard />;
+};
+
+const AdminRoute = ({ children }) => {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return children;
+};
+
 const AppLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { isAuthenticated, isCompany, isOperator } = useAuth();
 
   useEffect(() => {
     document.body.classList.toggle('sidebar-open', isSidebarOpen);
@@ -54,41 +66,44 @@ const AppLayout = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginView />
+        <ToastNotification />
+      </>
+    );
+  }
+
   return (
     <div className="app-layout">
-      {/* Sol Menü */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* Ana İçerik */}
       <div className="main-content-flow">
         <Navbar onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
         <main className="page-body-container">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/kanban" element={<KanbanView />} />
+            <Route path="/" element={<RoleRedirect />} />
+            <Route
+              path="/kanban"
+              element={isOperator ? <Navigate to="/orders" replace /> : <KanbanView />}
+            />
             <Route path="/orders" element={<OrdersView />} />
             <Route path="/orders/:id" element={<OrderDetailView />} />
-            <Route path="/companies" element={<CompaniesView />} />
-            <Route path="/doctors" element={<DoctorsView />} />
-            <Route path="/patients" element={<PatientsView />} />
-            <Route path="/materials" element={<MaterialsView />} />
+            <Route path="/companies" element={<AdminRoute><CompaniesView /></AdminRoute>} />
+            <Route path="/doctors" element={<AdminRoute><DoctorsView /></AdminRoute>} />
+            <Route path="/patients" element={<AdminRoute><PatientsView /></AdminRoute>} />
+            <Route path="/materials" element={<AdminRoute><MaterialsView /></AdminRoute>} />
+            <Route path="/users" element={<AdminRoute><UsersView /></AdminRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>
 
-      {/* Yeni Sipariş Modalı */}
-      <OrderModal />
-
-      {/* Ücretsiz Veritabanı Ayarları Modalı */}
-      <DatabaseConfigModal />
-
-      {/* Laboratuvar Ekibi / Teknisyenler Modalı */}
-      <TeamModal />
-
-      {/* Mobil Alt Navigasyon Çubuğu */}
+      {!isCompany && <OrderModal />}
+      {!(isCompany || isOperator) && <DatabaseConfigModal />}
+      {!(isCompany || isOperator) && <TeamModal />}
       <MobileBottomNav />
-
-      {/* Toast Bildirimleri */}
       <ToastNotification />
     </div>
   );
@@ -97,9 +112,11 @@ const AppLayout = () => {
 export default function App() {
   return (
     <HashRouter>
-      <DentalProvider>
-        <AppLayout />
-      </DentalProvider>
+      <AuthProvider>
+        <DentalProvider>
+          <AppLayout />
+        </DentalProvider>
+      </AuthProvider>
     </HashRouter>
   );
 }

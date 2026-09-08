@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Plus,
   Trash2,
@@ -32,6 +33,7 @@ export const CompaniesView = () => {
     searchQuery,
     showToast
   } = useDental();
+  const { users, upsertCompanyUser, deleteUsersByCompanyId } = useAuth();
 
   const [expandedCompanyIds, setExpandedCompanyIds] = useState({});
 
@@ -53,6 +55,8 @@ export const CompaniesView = () => {
   const [compEmail, setCompEmail] = useState('');
   const [compAddress, setCompAddress] = useState('');
   const [compBalance, setCompBalance] = useState(0);
+  const [compUsername, setCompUsername] = useState('');
+  const [compPassword, setCompPassword] = useState('');
 
   // Kapsamlı Firma & Bağlı Doktorlar Yönetim Modalı
   const [selectedCompanyForManage, setSelectedCompanyForManage] = useState(null);
@@ -84,6 +88,8 @@ export const CompaniesView = () => {
     setCompEmail('');
     setCompAddress('');
     setCompBalance(0);
+    setCompUsername('');
+    setCompPassword('');
     setIsCompanyModalOpen(true);
   };
 
@@ -97,12 +103,20 @@ export const CompaniesView = () => {
     setCompEmail(comp.email || '');
     setCompAddress(comp.address || '');
     setCompBalance(comp.balance || 0);
+    const existingUser = users.find(u => u.companyId === comp.id && u.role === 'company');
+    setCompUsername(existingUser?.username || '');
+    setCompPassword('');
     setIsCompanyModalOpen(true);
   };
 
   // Firma Kaydet
   const handleSaveCompany = (e) => {
     e.preventDefault();
+    if (!editingCompanyId && (!compUsername.trim() || !compPassword)) {
+      showToast('Firma için kullanıcı adı ve şifre zorunludur.', 'error');
+      return;
+    }
+
     const saved = saveCompany({
       id: editingCompanyId,
       name: compName,
@@ -112,6 +126,20 @@ export const CompaniesView = () => {
       address: compAddress,
       balance: parseFloat(compBalance) || 0
     });
+
+    if (compUsername.trim()) {
+      const userResult = upsertCompanyUser(
+        saved.id,
+        compUsername.trim(),
+        editingCompanyId ? compPassword : compPassword,
+        compName
+      );
+      if (!userResult.ok) {
+        showToast(userResult.error, 'error');
+      } else if (!editingCompanyId) {
+        showToast('Klinik ve firma kullanıcısı oluşturuldu.', 'success');
+      }
+    }
 
     if (selectedCompanyForManage && selectedCompanyForManage.id === editingCompanyId) {
       setSelectedCompanyForManage({ ...selectedCompanyForManage, ...saved });
@@ -248,6 +276,7 @@ export const CompaniesView = () => {
                         onClick={(e) => {
                           e.stopPropagation();
                           if (window.confirm(`${comp.name} ve bağlı kayıtlar silinsin mi?`)) {
+                            deleteUsersByCompanyId(comp.id);
                             deleteCompany(comp.id);
                           }
                         }}
@@ -727,6 +756,40 @@ export const CompaniesView = () => {
                     value={compAddress}
                     onChange={e => setCompAddress(e.target.value)}
                   />
+                </div>
+
+                <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-surface-elevated)', borderRadius: 10, border: '1px dashed var(--border-subtle)' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, marginBottom: 10, color: 'var(--dental-blue)' }}>
+                    Firma giriş hesabı
+                  </div>
+                  <div className="form-grid-2">
+                    <div className="form-item">
+                      <label>Kullanıcı adı {editingCompanyId ? '' : '*'}</label>
+                      <input
+                        type="text"
+                        className="dental-input"
+                        placeholder="ornek.klinik"
+                        value={compUsername}
+                        onChange={e => setCompUsername(e.target.value)}
+                        required={!editingCompanyId}
+                      />
+                    </div>
+                    <div className="form-item">
+                      <label>{editingCompanyId ? 'Yeni şifre (boş = değişmez)' : 'Şifre *'}</label>
+                      <input
+                        type="password"
+                        className="dental-input"
+                        placeholder={editingCompanyId ? 'Değiştirmek için yazın' : 'Şifre'}
+                        value={compPassword}
+                        onChange={e => setCompPassword(e.target.value)}
+                        required={!editingCompanyId}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                    Bu hesap yalnızca kendi işlerinin üretim hattını görür.
+                  </div>
                 </div>
               </div>
 

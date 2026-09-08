@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useDental } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard,
   Columns3,
@@ -14,15 +15,27 @@ import {
   RotateCcw,
   Database,
   UserCheck,
-  X
+  X,
+  Shield,
+  LogOut
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
   const { orders, exportData, importData, clearAllData, setIsDbModalOpen, setIsTeamModalOpen, technicians } = useDental();
+  const { currentUser, isAdmin, isOperator, isCompany, logout } = useAuth();
   const fileInputRef = useRef(null);
   const [isResetting, setIsResetting] = useState(false);
 
-  const activeOrdersCount = orders.filter(o => o.status === 'in_progress').length;
+  const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'rejected').length;
+  const pendingCount = orders.filter(o => o.status === 'pending_approval').length;
+
+  const roleLabel = isAdmin ? 'Yönetici' : (isCompany ? 'Firma hesabı' : 'Kullanıcı');
+  const initials = (currentUser?.name || currentUser?.username || '?')
+    .split(' ')
+    .map(p => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -78,42 +91,84 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
 
       {/* Nav Linkleri */}
       <ul className="nav-menu">
-        <li className="nav-heading">Üretim & Takip</li>
-        <li>
-          <NavLink
-            to="/"
-            end
-            onClick={handleNavClick}
-            className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
-          >
-            <LayoutDashboard size={18} />
-            <span>Genel Bakış</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/kanban"
-            onClick={handleNavClick}
-            className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
-          >
-            <Columns3 size={18} />
-            <span>Üretim Hattı (Kanban)</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink
-            to="/orders"
-            onClick={handleNavClick}
-            className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
-          >
-            <ClipboardList size={18} />
-            <span>Tüm İş Emirleri</span>
-            {activeOrdersCount > 0 && (
-              <span className="nav-badge-count">{activeOrdersCount}</span>
+        {!isCompany && (
+          <>
+            <li className="nav-heading">Üretim & Takip</li>
+            {isAdmin && (
+              <li>
+                <NavLink
+                  to="/"
+                  end
+                  onClick={handleNavClick}
+                  className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
+                >
+                  <LayoutDashboard size={18} />
+                  <span>Genel Bakış</span>
+                </NavLink>
+              </li>
             )}
-          </NavLink>
-        </li>
+            {isAdmin && (
+              <li>
+                <NavLink
+                  to="/kanban"
+                  onClick={handleNavClick}
+                  className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
+                >
+                  <Columns3 size={18} />
+                  <span>Üretim Hattı (Kanban)</span>
+                  {pendingCount > 0 && (
+                    <span className="nav-badge-count">{pendingCount}</span>
+                  )}
+                </NavLink>
+              </li>
+            )}
+            <li>
+              <NavLink
+                to="/orders"
+                onClick={handleNavClick}
+                className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
+              >
+                <ClipboardList size={18} />
+                <span>{isOperator ? 'İş Emirlerim' : 'Tüm İş Emirleri'}</span>
+                {activeOrdersCount > 0 && (
+                  <span className="nav-badge-count">{activeOrdersCount}</span>
+                )}
+              </NavLink>
+            </li>
+          </>
+        )}
 
+        {isCompany && (
+          <>
+            <li className="nav-heading">Takip</li>
+            <li>
+              <NavLink
+                to="/orders"
+                onClick={handleNavClick}
+                className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
+              >
+                <ClipboardList size={18} />
+                <span>İş Emirlerim</span>
+                {activeOrdersCount > 0 && (
+                  <span className="nav-badge-count">{activeOrdersCount}</span>
+                )}
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/kanban"
+                onClick={handleNavClick}
+                className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
+              >
+                <Columns3 size={18} />
+                <span>Üretim Durumu</span>
+              </NavLink>
+            </li>
+          </>
+        )}
+
+        {isAdmin && (
+          <>
         <li className="nav-heading">Paydaşlar</li>
         <li>
           <NavLink
@@ -143,6 +198,16 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
           >
             <Users size={18} />
             <span>Hastalar & Arşiv</span>
+          </NavLink>
+        </li>
+        <li>
+          <NavLink
+            to="/users"
+            onClick={handleNavClick}
+            className={({ isActive }) => `nav-item-btn ${isActive ? 'active' : ''}`}
+          >
+            <Shield size={18} />
+            <span>Kullanıcılar & Yetkiler</span>
           </NavLink>
         </li>
         <li className="nav-heading">Laboratuvar Ekibi</li>
@@ -261,11 +326,13 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
             <span>{isResetting ? 'Sıfırlanıyor...' : '🗑️ Tüm Verileri Sıfırla'}</span>
           </button>
         </li>
+          </>
+        )}
       </ul>
 
       {/* Profil Alt Alanı */}
       <div className="sidebar-bottom">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
           <div
             style={{
               width: 38,
@@ -277,16 +344,28 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: '0.85rem',
-              color: '#fff'
+              color: '#fff',
+              flexShrink: 0
             }}
           >
-            YU
+            {initials}
           </div>
-          <div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Yusuf Usta</div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Baş Teknisyen / Seramist</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {currentUser?.name || currentUser?.username}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{roleLabel}</div>
           </div>
         </div>
+        <button
+          type="button"
+          className="btn-dental btn-dental-secondary btn-dental-sm"
+          onClick={logout}
+          title="Çıkış yap"
+          style={{ padding: '6px 8px' }}
+        >
+          <LogOut size={14} />
+        </button>
       </div>
     </aside>
   </>

@@ -15,6 +15,11 @@ const getHeaders = () => ({
   'Prefer': 'resolution=merge-duplicates,return=representation'
 });
 
+const getReadHeaders = () => ({
+  ...getHeaders(),
+  Range: '0-9999'
+});
+
 // Güvenli ISO Tarih Dönüştürücü
 function safeIso(val) {
   if (!val) return null;
@@ -29,13 +34,13 @@ function safeIso(val) {
 // 1. TÜM VERİLERİ SUPABASE'DEN ÇEK
 export async function fetchAllFromSupabase() {
   try {
-    const headers = getHeaders();
+    const headers = getReadHeaders();
     const [compRes, docRes, patRes, ordRes, stepRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/companies?select=*&order=created_at.desc`, { headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/doctors?select=*&order=created_at.desc`, { headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/patients?select=*&order=created_at.desc`, { headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, { headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/order_steps?select=*&order=step_order.asc`, { headers })
+      fetch(`${SUPABASE_URL}/rest/v1/companies?select=*&order=created_at.desc&limit=10000`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/doctors?select=*&order=created_at.desc&limit=10000`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/patients?select=*&order=created_at.desc&limit=10000`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc&limit=10000`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/order_steps?select=*&order=step_order.asc&limit=20000`, { headers })
     ]);
 
     if (!compRes.ok || !docRes.ok || !patRes.ok || !ordRes.ok) {
@@ -138,7 +143,7 @@ export async function saveOrderToSupabase(order) {
       company_id: order.companyId || null,
       doctor_id: order.doctorId || null,
       patient_id: order.patientId || null,
-      material_id: order.materialId || 'porcelain',
+      material_id: order.materialId || 'mdp',
       teeth: Array.isArray(order.teeth) ? order.teeth : [],
       shade: order.shade || 'A2',
       priority: order.priority || 'normal',

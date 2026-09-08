@@ -6,274 +6,82 @@ const STORAGE_KEY = 'dental_lab_pro_db_v1';
 
 // Materyal ve Adım Adım Üretim Aşamaları Kütüphanesi
 const DEFAULT_MATERIAL_PIPELINES = {
+  mdp: {
+    id: 'mdp',
+    name: 'MDP',
+    badgeClass: 'badge-mat-mdp',
+    color: '#d97706',
+    description: 'MDP restorasyon üretimi.',
+    steps: [
+      { order: 1, name: 'Ölçü', description: 'Klinik ölçüsü alınır ve laboratuvara aktarılır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 1 },
+      { order: 2, name: 'Model', description: 'Ölçüden çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 2 },
+      { order: 3, name: 'Altyapı', description: 'Restorasyon altyapısı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+      { order: 4, name: 'Opak', description: 'Opak uygulaması yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+      { order: 5, name: 'Dentin', description: 'Dentin katmanı yığılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
+      { order: 6, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
+    ]
+  },
   porcelain: {
     id: 'porcelain',
-    name: 'Porselen Diş (Metal Destekli Seramik / PFM)',
+    name: 'Porselen',
     badgeClass: 'badge-mat-porcelain',
     color: '#f43f5e',
-    description: 'Klasik metal altyapı üzerine katman katman seramik yığımı tekniği.',
+    description: 'Porselen diş üretimi.',
     steps: [
-      {
-        order: 1,
-        name: 'Model Elde Etme (Alçı Model)',
-        description: 'Kliniğe gelen silikon veya dijital ölçü üzerinden özel tip IV sert alçı kullanılarak dişin birebir çalışma modeli ve hareketli güdükleri (dowel pin) elde edilir.',
-        defaultTechnician: 'Ayşe Teknisyen (Model/Alçı)',
-        estimatedHours: 3
-      },
-      {
-        order: 2,
-        name: 'Mum Modelleme (Wax-up)',
-        description: 'Klasik yöntemlerde dişin eksik formları mum yardımıyla model üzerinde elle şekillendirilir. Dijital sistemlerde ise CAD ile sanal mumlama yapılır.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 4
-      },
-      {
-        order: 3,
-        name: 'Alt Yapı Hazırlığı (Metal Döküm / Lazer Sinter)',
-        description: 'Revetmana alma sonrası indüksiyonlu döküm cihazında Cr-Co veya Ni-Cr alaşım eritilerek dökülür ya da lazer sinterleme ile metal altyapı oluşturulur.',
-        defaultTechnician: 'Ali Usta (Metal/Döküm)',
-        estimatedHours: 6
-      },
-      {
-        order: 4,
-        name: 'Metal Tesviye & Oksit Fırınlama',
-        description: 'Metal altyapının model üzerinde marjin ve arayüz pasif uyum kontrolü yapılır, kumlanır ve seramik bağını güçlendirmek için oksit fırınlaması uygulanır.',
-        defaultTechnician: 'Ali Usta (Metal/Döküm)',
-        estimatedHours: 3
-      },
-      {
-        order: 5,
-        name: 'Opak Uygulaması & Fırınlama',
-        description: 'Metal rengini maskelemek ve kimyasal bağlanmayı sağlamak için 1. ve 2. tabaka opak seramik sürülerek vakumlu seramik fırınında fırınlanır.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 3
-      },
-      {
-        order: 6,
-        name: 'Porselen Katmanlama (Build-up)',
-        description: 'Hazırlanan altyapı üzerine porselen tozu ve modelaj likidi karıştırılarak katman katman dentin, mine ve şeffaf/transparan seramik yığılır.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 5
-      },
-      {
-        order: 7,
-        name: 'Fırınlama (Sinterleme)',
-        description: 'Porselen katmanları özel vakumlu seramik fırınında 920-960°C sıcaklıkta fırınlanarak cam fazına geçirilir ve sertleştirilir.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 2
-      },
-      {
-        order: 8,
-        name: 'Rötuş ve Morfoloji (Şekillendirme)',
-        description: 'Fırınlanan dişe elmas frezler yardımıyla doğal dişin mamelonları, gelişim olukları, mikro dokuları ve karşıt çeneyle oklüzal teması kazandırılır.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 4
-      },
-      {
-        order: 9,
-        name: 'Glaze (Parlatma) ve Renklendirme',
-        description: 'Dişin doğal parlaklığını kazanması ve ağız içindeki diğer dişlerle renk uyumunun tam olması için yüzey cilası (glaze) ve VITA renk boyama fırınlaması yapılır.',
-        defaultTechnician: 'Elif Teknisyen (Glaze)',
-        estimatedHours: 2
-      },
-      {
-        order: 10,
-        name: 'Kalite Kontrol & Sevkiyat',
-        description: 'Güdük modelde marjin açıklığı, kontak noktaları ve çatlak kontrolü yapılır. Dezenfekte edilerek klinik taşıma kutusuna yerleştirilir.',
-        defaultTechnician: 'Yusuf Usta (Laboratuvar Şefi)',
-        estimatedHours: 1
-      }
+      { order: 1, name: 'Ölçü', description: 'Klinik ölçüsü alınır ve laboratuvara aktarılır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 1 },
+      { order: 2, name: 'Model', description: 'Ölçüden çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 2 },
+      { order: 3, name: 'Altyapı', description: 'Restorasyon altyapısı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+      { order: 4, name: 'Opak', description: 'Opak uygulaması yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+      { order: 5, name: 'Dentin', description: 'Dentin katmanı yığılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
+      { order: 6, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
     ]
   },
-
   zirconia: {
     id: 'zirconia',
-    name: 'Zirkonyum (Monolitik & Katmanlı Zirkon)',
+    name: 'Zirkonyum',
     badgeClass: 'badge-mat-zirconia',
     color: '#06b6d4',
-    description: 'Yüksek biyouyumluluk ve dayanıklılık sunan 3D CAD/CAM zirkon blok üretimi.',
+    description: 'Zirkonyum restorasyon üretimi.',
     steps: [
-      {
-        order: 1,
-        name: 'Dijital Ölçü / 3D Model Tarama',
-        description: 'Kliniğin ağız içi tarayıcı (IOS) datası sisteme alınır veya laboratuvar optik tarayıcısında alçı güdük model 3 boyutlu taranır.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 2
-      },
-      {
-        order: 2,
-        name: 'CAD Tasarımı (3D Dijital Dizayn)',
-        description: 'Exocad veya 3Shape yazılımında hastanın anatomik diş formu, marjin basamağı, tüberkülleri ve oklüzal dinamikleri sanal olarak tasarlanır.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 3
-      },
-      {
-        order: 3,
-        name: 'CAM Frezeleme (Milling Kazıma)',
-        description: 'Yüksek hassasiyetli 5 eksenli CNC kuru freze cihazında çok katmanlı (multilayer) zirkonyum diskten mikron hassasiyetinde kazınır.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 4
-      },
-      {
-        order: 4,
-        name: 'Bloktan Ayırma & Likit Renklendirme',
-        description: 'Destek pinleri kesilerek diş çıkarılır. Ham kireçsi zirkona özel renklendirme sıvıları (dentine boyaları) ile daldırma ve fırçalama uygulanır.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 2
-      },
-      {
-        order: 5,
-        name: 'Yüksek Isı Sinterleme (1500°C)',
-        description: 'Özel yüksek ısı zirkon sinter fırınında 8-10 saat boyunca 1500°C sıcaklıkta sinterlenerek zirkonun nihai %100 sertlik ve ışık geçirgenliğine kavuşması sağlanır.',
-        defaultTechnician: 'Ali Usta (Fırın)',
-        estimatedHours: 8
-      },
-      {
-        order: 6,
-        name: 'Morfoloji & Oklüzal Tesviye',
-        description: 'Sinterden çıkan monolitik zirkon su soğutmalı elmas aletlerle artikülatörde temas ve marjin uyumuna getirilir.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 3
-      },
-      {
-        order: 7,
-        name: 'Karakterizasyon & Glaze Fırını',
-        description: 'Doğal fissür efektleri, insizal şeffaflık boyaları ve yüzey glaze cilası uygulanarak 850°C fırınlanır.',
-        defaultTechnician: 'Elif Teknisyen (Glaze)',
-        estimatedHours: 2
-      },
-      {
-        order: 8,
-        name: 'Kalite Kontrol & Paketleme',
-        description: 'Işık masasında mikro çatlak, translusens ve basamak uyumu denetlenir, steril poşetlenip kliniğe sevk edilir.',
-        defaultTechnician: 'Yusuf Usta (Laboratuvar Şefi)',
-        estimatedHours: 1
-      }
+      { order: 1, name: 'Ölçü', description: 'Klinik ölçüsü alınır ve laboratuvara aktarılır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 1 },
+      { order: 2, name: 'Model', description: 'Ölçüden çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 2 },
+      { order: 3, name: 'Altyapı', description: 'Restorasyon altyapısı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+      { order: 4, name: 'Opak', description: 'Opak uygulaması yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+      { order: 5, name: 'Dentin', description: 'Dentin katmanı yığılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
+      { order: 6, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
     ]
   },
-
-  emax: {
-    id: 'emax',
-    name: 'Tam Seramik / E-Max (Lityum Disilikat)',
-    badgeClass: 'badge-mat-emax',
-    color: '#8b5cf6',
-    description: 'Ön bölge için maksimum estetik, ışık geçirgenliği ve doğal mine taklidi.',
-    steps: [
-      {
-        order: 1,
-        name: 'Hassas Güdük Model & Tarama',
-        description: 'Güdükler mikroskop altında traşlanır, marjin çizgisi çizilir ve 3D optik taranır.',
-        defaultTechnician: 'Ayşe Teknisyen (Model/Alçı)',
-        estimatedHours: 2
-      },
-      {
-        order: 2,
-        name: 'Wax-up veya CAD Tasarımı',
-        description: 'Lamina veya tam kron formu mumlanır veya CAD ortamında sıfır kalınlık geçişiyle dizayn edilir.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 3
-      },
-      {
-        order: 3,
-        name: 'Presleme veya Islak Frezeleme',
-        description: 'E-Max press fırınında lityum disilikat külçe (ingot) 920°C basılır ya da CAM ıslak frezede bloktan kazınır.',
-        defaultTechnician: 'Ali Usta (Döküm/Pres)',
-        estimatedHours: 4
-      },
-      {
-        order: 4,
-        name: 'Divestment & Reaksiyon Katmanı Temizliği',
-        description: 'Cam bilye kumlama ve özel Invex sıvısı ile ultrasonik banyoda reaksiyon tabakası mikro seviyede temizlenir.',
-        defaultTechnician: 'Ali Usta (Döküm/Pres)',
-        estimatedHours: 2
-      },
-      {
-        order: 5,
-        name: 'Kristalizasyon & Karakterizasyon Boyama',
-        description: 'Mavi blok fazından disilikata dönüşüm fırınlaması yapılır ve mine çatlakları, floresans boyaları işlenir.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 3
-      },
-      {
-        order: 6,
-        name: 'Glaze & Mekanik Cila',
-        description: 'Yüksek parlaklık glaze fırını sonrası elmas keçe polisajı uygulanır.',
-        defaultTechnician: 'Elif Teknisyen (Glaze)',
-        estimatedHours: 2
-      },
-      {
-        order: 7,
-        name: 'Kalite Kontrol & Sevkiyat',
-        description: 'Özellikle marjin kenarlarının inceliği mikroskop altında incelenir ve silikon korumalı kutuya alınır.',
-        defaultTechnician: 'Yusuf Usta (Laboratuvar Şefi)',
-        estimatedHours: 1
-      }
-    ]
-  },
-
   implant: {
     id: 'implant',
-    name: 'İmplant Üstü Protez (Vidalı / Simante Hibrit)',
+    name: 'İmplant',
     badgeClass: 'badge-mat-implant',
     color: '#10b981',
-    description: 'İmplant analogları, özel titanyum dayanak (Ti-Base) ve vidalı hibrit üstyapı süreci.',
+    description: 'İmplant üstü protez üretimi. Son etaptan porselene geçilebilir.',
     steps: [
-      {
-        order: 1,
-        name: 'Analog Model & Tarama Gövdesi (Scan Body)',
-        description: 'İmplant analogları alçı modele monte edilir, dişeti maskesi (gingiva) dökülür ve scan body parçalarıyla taranır.',
-        defaultTechnician: 'Ayşe Teknisyen (Model/Alçı)',
-        estimatedHours: 3
-      },
-      {
-        order: 2,
-        name: 'Özel Dayanak (Custom Ti-Base) CAD Tasarımı',
-        description: 'Hastanın dişeti çıkış profili (emergence profile) ve vida açısı telafisi için 3D sanal dayanak tasarlanır.',
-        defaultTechnician: 'Murat Teknisyen (CAD/CAM)',
-        estimatedHours: 4
-      },
-      {
-        order: 3,
-        name: 'Titanyum Bar / Altyapı Kazıma',
-        description: 'Metal frezeleme ile titanyum veya Co-Cr implant bağlantı yuvaları üretilir.',
-        defaultTechnician: 'Ali Usta (Metal/Döküm)',
-        estimatedHours: 5
-      },
-      {
-        order: 4,
-        name: 'Pasif Uyum & Sheffield / Jig Testi',
-        description: 'Çoklu implantlarda sıfır gerilimle tam oturma (passive fit) doğrulanır, transfer jig hazırlanır.',
-        defaultTechnician: 'Ali Usta (Metal/Döküm)',
-        estimatedHours: 3
-      },
-      {
-        order: 5,
-        name: 'Estetik Üstyapı Katmanlama / Zirkon Hibritleme',
-        description: 'Ti-Base ile zirkon veya porselen üstyapı kompozit rezin siman ile mikroskop altında kimyasal olarak birleştirilir.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 5
-      },
-      {
-        order: 6,
-        name: 'Vida Kanalı Düzenleme & Oklüzal Uyum',
-        description: 'Vida giriş kanalı açısı kontrol edilir, oklüzal yüzey vidalama tork anahtarına göre ayarlanır.',
-        defaultTechnician: 'Yusuf Usta (Seramist)',
-        estimatedHours: 2
-      },
-      {
-        order: 7,
-        name: 'Glaze, Polisaj & Aksesuar Paketi',
-        description: 'Parlatma tamamlanır; klinik transfer vidası, laboratuvar vidası ve tork değer kartı steril ambalajlanır.',
-        defaultTechnician: 'Elif Teknisyen (Glaze)',
-        estimatedHours: 2
-      },
-      {
-        order: 8,
-        name: 'Son Kalite & Teslimat',
-        description: 'Tork testleri, marjin bütünlüğü incelenir ve kargo/kuryeye teslim edilir.',
-        defaultTechnician: 'Yusuf Usta (Laboratuvar Şefi)',
-        estimatedHours: 1
-      }
+      { order: 1, name: 'Ölçü', description: 'İmplant ölçüsü alınır ve laboratuvara aktarılır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 1 },
+      { order: 2, name: 'Model', description: 'İmplant analoglu çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 2 },
+      { order: 3, name: 'Abutment', description: 'Abutment / dayanak hazırlanır.', defaultTechnician: 'Murat Teknisyen', estimatedHours: 3 },
+      { order: 4, name: 'Freze', description: 'Altyapı veya üstyapı frezelenir.', defaultTechnician: 'Ali Usta', estimatedHours: 4 },
+      { order: 5, name: 'Torklama', description: 'Abutment torklanarak sabitlenir.', defaultTechnician: 'Ali Usta', estimatedHours: 2 },
+      { order: 6, name: 'Ölçü 2', description: 'Torklama sonrası kontrol ölçüsü alınır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 1 },
+      { order: 7, name: 'Altyapı', description: 'Porselen öncesi altyapı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+      { order: 8, name: 'Prova', description: 'Altyapı / üstyapı provası yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+      { order: 9, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
+    ]
+  },
+  lamina: {
+    id: 'lamina',
+    name: 'Lamina',
+    badgeClass: 'badge-mat-lamina',
+    color: '#8b5cf6',
+    description: 'Lamina restorasyon üretimi.',
+    steps: [
+      { order: 1, name: 'Ölçü', description: 'Klinik ölçüsü alınır ve laboratuvara aktarılır.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 1 },
+      { order: 2, name: 'Model', description: 'Ölçüden çalışma modeli elde edilir.', defaultTechnician: 'Ayşe Teknisyen', estimatedHours: 2 },
+      { order: 3, name: 'Altyapı', description: 'Restorasyon altyapısı hazırlanır.', defaultTechnician: 'Ali Usta', estimatedHours: 3 },
+      { order: 4, name: 'Opak', description: 'Opak uygulaması yapılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 2 },
+      { order: 5, name: 'Dentin', description: 'Dentin katmanı yığılır.', defaultTechnician: 'Yusuf Usta', estimatedHours: 3 },
+      { order: 6, name: 'Glaze', description: 'Glaze ve parlatma tamamlanır.', defaultTechnician: 'Elif Teknisyen', estimatedHours: 2 }
     ]
   }
 };

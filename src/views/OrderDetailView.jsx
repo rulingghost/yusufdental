@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDental } from '../context/DentalContext';
+import { useDental, isOrderFromCompletedImplant, idsMatch } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
 import { PipelineStepper } from '../components/PipelineStepper';
 import { PrintSlip } from '../components/PrintSlip';
+import { StepDateModal } from '../components/StepDateModal';
 import { ArrowLeft, Printer, Edit3, X, Share2, Copy } from 'lucide-react';
 
 export const OrderDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, companies, doctors, patients, materials, vitaShades, saveOrder, showToast, restartOrder } = useDental();
+  const { orders, companies, doctors, patients, materials, vitaShades, saveOrder, showToast, restartOrder, approveOrder } = useDental();
+  const { isAdmin, isCompany } = useAuth();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showApproveDate, setShowApproveDate] = useState(false);
 
-  const order = orders.find(o => o.id === id);
+  const order = orders.find(o => idsMatch(o.id, id));
 
   // Düzenleme state'leri
   const [editShade, setEditShade] = useState('');
@@ -110,6 +114,9 @@ export const OrderDetailView = () => {
   };
 
   const isCompleted = order.status === 'completed';
+  const isPending = order.status === 'pending_approval';
+  const canMutate = isAdmin;
+  const canViewExtras = isAdmin || isCompany;
 
   return (
     <div>
@@ -137,6 +144,11 @@ export const OrderDetailView = () => {
             <span className={`badge-pill ${material.badgeClass}`} style={{ fontSize: '0.85rem', padding: '4px 12px' }}>
               {material.name}
             </span>
+            {isOrderFromCompletedImplant(order) && (
+              <span className="badge-pill badge-completed" style={{ fontSize: '0.85rem', padding: '4px 12px' }}>
+                İmplant tamamlandı
+              </span>
+            )}
           </div>
           <p className="page-subtitle">
             Sipariş Tarihi: <strong>{order.orderDate}</strong> • Nihai Teslim: <strong style={{ color: 'var(--status-urgent)' }}>{order.deliveryDate}</strong>
@@ -144,6 +156,7 @@ export const OrderDetailView = () => {
         </div>
 
         <div className="page-header-actions">
+          {canViewExtras && (
           <button
             type="button"
             className="btn-dental btn-dental-secondary"
@@ -154,6 +167,8 @@ export const OrderDetailView = () => {
             <Copy size={16} />
             <span>WhatsApp Özeti Kopyala</span>
           </button>
+          )}
+          {canMutate && (
           <button
             type="button"
             className="btn-dental btn-dental-secondary"
@@ -162,6 +177,8 @@ export const OrderDetailView = () => {
             <Edit3 size={16} />
             <span>Siparişi Düzenle</span>
           </button>
+          )}
+          {canViewExtras && (
           <button
             type="button"
             className="btn-dental btn-dental-secondary"
@@ -170,8 +187,31 @@ export const OrderDetailView = () => {
             <Printer size={16} />
             <span>İş Emri Fişini Yazdır</span>
           </button>
+          )}
         </div>
       </div>
+
+      {isPending && (
+        <div style={{
+          padding: '14px 18px',
+          background: 'var(--status-revision-bg)',
+          border: '1px solid var(--status-revision)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 20,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10
+        }}>
+          <strong>Bu iş emri onay bekliyor. Üretim henüz başlamadı.</strong>
+          {isAdmin && (
+            <button type="button" className="btn-dental btn-dental-primary btn-dental-sm" onClick={() => setShowApproveDate(true)}>
+              Onayla ve başlat
+            </button>
+          )}
+        </div>
+      )}
 
       {/* EĞER TAMAMLANMIŞSA: YENİDEN BAŞLATMA & ÜRETİME GERİ ALMA BANNERI */}
       {isCompleted && (
@@ -203,9 +243,14 @@ export const OrderDetailView = () => {
             </div>
             <div>
               <strong style={{ color: 'var(--text-primary)', fontSize: '1rem', display: 'block' }}>Bu İş Emri Tamamlandı ve Arşivde</strong>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Kliniğin talebiyle renk/uyum düzeltmesi veya revizyon için işlemi tekrar üretim hattına alabilirsiniz.</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                {canMutate
+                  ? 'Kliniğin talebiyle renk/uyum düzeltmesi veya revizyon için işlemi tekrar üretim hattına alabilirsiniz.'
+                  : 'Bu iş emri laboratuvar tarafından tamamlandı. Aşama tarihlerini aşağıdan takip edebilirsiniz.'}
+              </div>
             </div>
           </div>
+          {canMutate && (
           <button
             type="button"
             className="btn-dental btn-dental-primary"
@@ -214,6 +259,7 @@ export const OrderDetailView = () => {
           >
             <span>🔄 İşlemi Yeniden Başlat & Üretime Geri Döndür</span>
           </button>
+          )}
         </div>
       )}
 
@@ -391,6 +437,19 @@ export const OrderDetailView = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {showApproveDate && (
+        <StepDateModal
+          title="İş emrini onayla"
+          subtitle="Onay tarihini seçin. İş bu tarihten sonra üretim hattına alınır."
+          confirmLabel="Onayla ve başlat"
+          onConfirm={(date) => {
+            approveOrder(order.id, date);
+            setShowApproveDate(false);
+          }}
+          onCancel={() => setShowApproveDate(false)}
+        />
       )}
 
       {/* Yazdırma Şablonu */}

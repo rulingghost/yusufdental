@@ -6,7 +6,7 @@ export const MaterialsView = () => {
   const { materials } = useDental();
   // İlk materyal açık başlasın, diğerleri derli toplu olsun
   const [expandedMatIds, setExpandedMatIds] = useState(() => ({
-    [Object.keys(materials)[0] || 'porcelain']: true
+    [Object.keys(materials)[0] || 'mdp']: true
   }));
 
   const toggleExpand = (id) => {
@@ -22,7 +22,7 @@ export const MaterialsView = () => {
         <div>
           <h2 className="page-title">Dental Materyal & Üretim Aşamaları Rehberi</h2>
           <p className="page-subtitle">
-            Porselen, Zirkonyum, E-Max ve İmplant sistemlerinin detaylı laboratuvar iş akış şablonları
+            MDP (Metal Destekli Porselen), Zirkonyum, İmplant ve Lamina iş akış şablonları
           </p>
         </div>
       </div>

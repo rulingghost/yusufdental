@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
+import { StepDateModal } from './StepDateModal';
 import { CheckCircle2, Plus, Trash2, Edit2, X, Check, Clock, ArrowRight, User, Info, ChevronDown } from 'lucide-react';
 
 export const PipelineStepper = ({ order }) => {
@@ -11,8 +13,11 @@ export const PipelineStepper = ({ order }) => {
     technicians,
     assignTechnicianToStep,
     toggleStepCompletion,
+    convertImplantToMdp,
     setIsTeamModalOpen
   } = useDental();
+  const { isCompany, isOperator } = useAuth();
+  const isLocked = isCompany || isOperator || order.status === 'rejected';
 
   const [localSteps, setLocalSteps] = useState(order.steps || []);
   const [openInfoIdx, setOpenInfoIdx] = useState(null);
@@ -28,6 +33,8 @@ export const PipelineStepper = ({ order }) => {
   const [editStepTitle, setEditStepTitle] = useState('');
   const [editStepSubtitle, setEditStepSubtitle] = useState('');
 
+  const [dateModal, setDateModal] = useState(null);
+
   const completedCount = (order.steps || []).filter(s => s.status === 'completed').length;
   const totalCount = (order.steps || []).length;
   const progressPct = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -35,6 +42,7 @@ export const PipelineStepper = ({ order }) => {
   const currentStepIdx = (order.steps || []).findIndex(s => s.status === 'in_progress');
   const activeStep = currentStepIdx !== -1 ? order.steps[currentStepIdx] : null;
   const isAllCompleted = totalCount > 0 && completedCount === totalCount;
+  const isImplantLastStage = order.materialId === 'implant' && currentStepIdx === totalCount - 1 && !!activeStep;
 
   const handleFieldChange = (stepIndex, field, value) => {
     const next = [...localSteps];
@@ -49,7 +57,25 @@ export const PipelineStepper = ({ order }) => {
 
   const handleQuickComplete = (stepIndex) => {
     const s = localSteps[stepIndex] || order.steps[stepIndex];
-    updateStepStatus(order.id, stepIndex, 'completed', s.technician, s.notes);
+    setDateModal({ mode: 'next', stepIndex, stepName: s?.name || 'Aşama' });
+  };
+
+  const confirmDateModal = (date) => {
+    if (!dateModal) return;
+    if (dateModal.mode === 'toMdp') {
+      convertImplantToMdp(order.id, date);
+    } else if (dateModal.mode === 'toggle') {
+      const s = localSteps[dateModal.stepIndex] || order.steps[dateModal.stepIndex];
+      if (s?.status === 'completed') {
+        updateStepStatus(order.id, dateModal.stepIndex, 'in_progress', s.technician, s.notes);
+      } else {
+        updateStepStatus(order.id, dateModal.stepIndex, 'completed', s?.technician || '', s?.notes || '', date);
+      }
+    } else {
+      const s = localSteps[dateModal.stepIndex] || order.steps[dateModal.stepIndex];
+      updateStepStatus(order.id, dateModal.stepIndex, 'completed', s?.technician || '', s?.notes || '', date);
+    }
+    setDateModal(null);
   };
 
   // Yeni Aşama Ekleme
@@ -94,7 +120,7 @@ export const PipelineStepper = ({ order }) => {
               %{progressPct}
             </span>
 
-            {/* Yeni Aşama Ekle Butonu */}
+            {!isLocked && (
             <button
               type="button"
               className="btn-dental btn-dental-primary btn-dental-sm"
@@ -103,6 +129,7 @@ export const PipelineStepper = ({ order }) => {
               <Plus size={15} />
               <span>+ Yeni Aşama Ekle</span>
             </button>
+            )}
           </div>
         </div>
 
@@ -120,7 +147,7 @@ export const PipelineStepper = ({ order }) => {
       </div>
 
       {/* 1-TIKLA HIZLI AŞAMA İLERLETME KARTI (Frictionless Quick Advance) */}
-      {activeStep && !isAllCompleted && (
+      {activeStep && !isAllCompleted && !isLocked && (
         <div className="quick-advance-banner">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div className="pulse-indicator" />
@@ -137,15 +164,42 @@ export const PipelineStepper = ({ order }) => {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn-dental btn-dental-primary"
-            style={{ padding: '10px 18px', fontSize: '0.92rem', boxShadow: '0 4px 14px var(--dental-primary-glow)' }}
-            onClick={() => handleQuickComplete(currentStepIdx)}
-          >
-            <span>✓ Bu Aşamayı Tamamla ve Sonrakine Geç</span>
-            <ArrowRight size={16} />
-          </button>
+          {isImplantLastStage ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-dental btn-dental-primary"
+                style={{ padding: '10px 18px', fontSize: '0.92rem' }}
+                onClick={() => handleQuickComplete(currentStepIdx)}
+              >
+                <span>✓ Bitir</span>
+              </button>
+              <button
+                type="button"
+                className="btn-dental btn-dental-primary"
+                style={{
+                  padding: '10px 18px',
+                  fontSize: '0.92rem',
+                  background: 'linear-gradient(135deg, #e11d48, #be123c)',
+                  boxShadow: '0 4px 14px rgba(225, 29, 72, 0.35)'
+                }}
+                onClick={() => setDateModal({ mode: 'toMdp', stepName: 'Glaze' })}
+              >
+                <span>MDP'ye geç</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn-dental btn-dental-primary"
+              style={{ padding: '10px 18px', fontSize: '0.92rem', boxShadow: '0 4px 14px var(--dental-primary-glow)' }}
+              onClick={() => handleQuickComplete(currentStepIdx)}
+            >
+              <span>✓ Bu Aşamayı Tamamla ve Sonrakine Geç</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
         </div>
       )}
 
@@ -268,8 +322,17 @@ export const PipelineStepper = ({ order }) => {
                   <button
                     type="button"
                     className={`step-compact-checkbox ${isDone ? 'is-checked' : ''}`}
-                    onClick={() => toggleStepCompletion(order.id, idx)}
-                    title={isDone ? 'Tamamlandı (İşlemde yapmak için tıkla)' : 'Tamamlandı olarak işaretle (1 tıkla bitir)'}
+                    onClick={() => {
+                      if (isLocked) return;
+                      const s = order.steps[idx];
+                      if (s?.status === 'completed') {
+                        toggleStepCompletion(order.id, idx);
+                        return;
+                      }
+                      setDateModal({ mode: 'toggle', stepIndex: idx, stepName: s?.name || 'Aşama' });
+                    }}
+                    disabled={isLocked}
+                    title={isLocked ? 'Bu aşama yalnızca görüntülenir' : (isDone ? 'Tamamlandı (İşlemde yapmak için tıkla)' : 'Tamamlandı olarak işaretle (1 tıkla bitir)')}
                     style={{
                       width: 26,
                       height: 26,
@@ -281,7 +344,7 @@ export const PipelineStepper = ({ order }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: 'pointer',
+                      cursor: isLocked ? 'default' : 'pointer',
                       flexShrink: 0,
                       transition: 'all 0.15s ease'
                     }}
@@ -346,6 +409,9 @@ export const PipelineStepper = ({ order }) => {
                     }}
                   >
                     <User size={12} color="var(--dental-blue)" />
+                    {isLocked ? (
+                      <span style={{ fontSize: '0.76rem', fontWeight: 600 }}>{step.technician || 'Atanmamış'}</span>
+                    ) : (
                     <select
                       value={step.technician || ''}
                       onChange={(e) => assignTechnicianToStep(order.id, idx, e.target.value)}
@@ -365,6 +431,7 @@ export const PipelineStepper = ({ order }) => {
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>
+                    )}
                   </div>
 
                   {/* 'İşlem Hakkında' Açılır Detay Butonu */}
@@ -386,7 +453,7 @@ export const PipelineStepper = ({ order }) => {
                     />
                   </button>
 
-                  {/* Silme Butonu */}
+                  {!isLocked && (
                   <button
                     type="button"
                     className="btn-dental btn-dental-danger btn-dental-sm"
@@ -400,6 +467,7 @@ export const PipelineStepper = ({ order }) => {
                   >
                     <Trash2 size={13} />
                   </button>
+                  )}
                 </div>
               </div>
 
@@ -457,7 +525,7 @@ export const PipelineStepper = ({ order }) => {
                       <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--dental-blue)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         📋 İstasyon Talimatı & Detay:
                       </span>
-                      {!isEditingThisTitle && (
+                      {!isEditingThisTitle && !isLocked && (
                         <button
                           type="button"
                           className="btn-dental btn-dental-secondary btn-dental-sm"
@@ -486,7 +554,7 @@ export const PipelineStepper = ({ order }) => {
                     </p>
                   </div>
 
-                  {/* 2. Teknisyen Notu / Raporu */}
+                  {!isLocked && (
                   <div style={{ marginBottom: 10 }}>
                     <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                       ✍️ Aşama Notu / Raporu:
@@ -510,6 +578,12 @@ export const PipelineStepper = ({ order }) => {
                       </button>
                     </div>
                   </div>
+                  )}
+                  {isLocked && step.notes && (
+                    <div style={{ marginBottom: 10, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      ✍️ {step.notes}
+                    </div>
+                  )}
 
                   {/* 3. Zamanlama Bilgileri */}
                   <div
@@ -526,8 +600,11 @@ export const PipelineStepper = ({ order }) => {
                     }}
                   >
                     <span>
-                      {step.completedAt ? `✓ Tamamlanma Zamanı: ${step.completedAt}` : (step.startedAt ? `⚙️ Başlama Zamanı: ${step.startedAt}` : 'Henüz başlanmadı')}
+                      {step.completedDate
+                        ? `✓ Tamamlanma tarihi: ${step.completedDate}`
+                        : (step.completedAt ? `✓ Tamamlanma Zamanı: ${step.completedAt}` : (step.startedAt ? `⚙️ Başlama Zamanı: ${step.startedAt}` : 'Henüz başlanmadı'))}
                     </span>
+                    {!isLocked && (
                     <button
                       type="button"
                       style={{ background: 'none', border: 'none', color: 'var(--dental-blue)', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
@@ -537,6 +614,7 @@ export const PipelineStepper = ({ order }) => {
                     >
                       👥 Ekip / Teknisyen Ekle-Çıkar
                     </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -544,6 +622,16 @@ export const PipelineStepper = ({ order }) => {
           );
         })}
       </div>
+
+      {dateModal && (
+        <StepDateModal
+          title={dateModal.mode === 'toMdp' ? 'MDP işine geç' : 'Aşama tarihi'}
+          subtitle={`"${dateModal.stepName || 'Bu aşama'}" için tarihi girin.`}
+          confirmLabel={dateModal.mode === 'toMdp' ? 'MDP ye geç' : 'Kaydet ve ilerle'}
+          onConfirm={confirmDateModal}
+          onCancel={() => setDateModal(null)}
+        />
+      )}
     </div>
   );
 };

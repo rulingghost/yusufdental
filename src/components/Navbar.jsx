@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Search, Plus, Sun, Moon, Menu, X, Users } from 'lucide-react';
+import { Search, Plus, Sun, Moon, Menu, X, Users, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export const Navbar = ({ onToggleSidebar }) => {
   const {
@@ -9,9 +10,11 @@ export const Navbar = ({ onToggleSidebar }) => {
     theme,
     toggleTheme,
     setIsOrderModalOpen,
+    setEditingOrder,
     setIsTeamModalOpen,
     technicians
   } = useDental();
+  const { isAdmin, isOperator, isCompany, logout, currentUser } = useAuth();
 
   const searchInputRef = useRef(null);
 
@@ -27,13 +30,16 @@ export const Navbar = ({ onToggleSidebar }) => {
       // Ctrl+N veya Cmd+N: Yeni sipariş modalını aç (eğer input içinde yazmıyorsa)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
         e.preventDefault();
-        setIsOrderModalOpen(true);
+        if (!isCompany) {
+          setEditingOrder(null);
+          setIsOrderModalOpen(true);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setIsOrderModalOpen]);
+  }, [setIsOrderModalOpen, setEditingOrder, isCompany]);
 
   return (
     <header className="top-navbar">
@@ -78,7 +84,7 @@ export const Navbar = ({ onToggleSidebar }) => {
       </div>
 
       <div className="navbar-right-group">
-        {/* Ekip & Teknisyenler Butonu */}
+        {isAdmin && (
         <button
           type="button"
           className="btn-dental btn-dental-secondary desktop-only"
@@ -90,18 +96,22 @@ export const Navbar = ({ onToggleSidebar }) => {
             Ekip ({technicians ? technicians.length : 0})
           </span>
         </button>
+        )}
 
-        {/* Yeni Sipariş Butonu */}
+        {!isCompany && (
         <button
           type="button"
           className="btn-dental btn-dental-primary navbar-new-order-btn"
-          onClick={() => setIsOrderModalOpen(true)}
+          onClick={() => {
+            setEditingOrder(null);
+            setIsOrderModalOpen(true);
+          }}
         >
           <Plus size={18} strokeWidth={2.5} />
-          <span className="navbar-btn-text">Yeni İş Emri</span>
+          <span className="navbar-btn-text">{isOperator ? 'İş Emri Başlat' : 'Yeni İş Emri'}</span>
         </button>
+        )}
 
-        {/* Tema Değiştirici */}
         <button
           type="button"
           className="btn-dental btn-dental-secondary navbar-theme-btn"
@@ -109,6 +119,15 @@ export const Navbar = ({ onToggleSidebar }) => {
           title={theme === 'light' ? 'Koyu Safir Temaya Geç' : 'Ferah Dental Temaya Geç'}
         >
           {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+        </button>
+
+        <button
+          type="button"
+          className="btn-dental btn-dental-secondary btn-dental-sm"
+          onClick={logout}
+          title={`${currentUser?.name || ''} çıkış`}
+        >
+          <LogOut size={16} />
         </button>
       </div>
     </header>

@@ -820,6 +820,16 @@ a {
   color: #a78bfa;
 }
 
+.badge-mat-lamina {
+  background-color: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+}
+
+.badge-mat-mdp {
+  background-color: rgba(217, 119, 6, 0.12);
+  color: #fbbf24;
+}
+
 .badge-mat-implant {
   background-color: rgba(16, 185, 129, 0.12);
   color: #34d399;

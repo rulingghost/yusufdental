@@ -47,6 +47,10 @@
   --mat-zirconia-bg: #e0f2fe;
   --mat-emax: #7c3aed;
   --mat-emax-bg: #ede9fe;
+  --mat-lamina: #7c3aed;
+  --mat-lamina-bg: #ede9fe;
+  --mat-mdp: #d97706;
+  --mat-mdp-bg: #fef3c7;
   --mat-implant: #059669;
   --mat-implant-bg: #d1fae5;
 
@@ -94,6 +98,8 @@
   --mat-porcelain-bg: rgba(225, 29, 72, 0.18);
   --mat-zirconia-bg: rgba(2, 132, 199, 0.18);
   --mat-emax-bg: rgba(124, 58, 237, 0.18);
+  --mat-lamina-bg: rgba(124, 58, 237, 0.18);
+  --mat-mdp-bg: rgba(217, 119, 6, 0.18);
   --mat-implant-bg: rgba(5, 150, 105, 0.18);
 
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -124,6 +130,12 @@ select option {
 html {
   overflow-x: clip;
   -webkit-text-size-adjust: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-layout {
+    zoom: 0.75;
+  }
 }
 
 body {
@@ -277,6 +289,9 @@ a {
 .sidebar-bottom {
   padding: 16px;
   border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Ana İçerik */
@@ -588,40 +603,52 @@ a {
    Üretim Hattı (Kanban Görünümü)
    ========================================================================== */
 .kanban-board-container {
+  --kanban-cols: 6;
   display: flex;
-  gap: 16px;
+  gap: 8px;
   overflow-x: auto;
   padding-bottom: 24px;
   min-height: calc(100vh - 280px);
 }
 
 .kanban-station-col {
-  flex: 0 0 310px;
+  flex: 0 0 calc((100% - (var(--kanban-cols) - 1) * 8px) / var(--kanban-cols));
+  width: calc((100% - (var(--kanban-cols) - 1) * 8px) / var(--kanban-cols));
+  min-width: 0;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  max-height: 820px;
+  min-height: 240px;
+  max-height: none;
   box-shadow: var(--shadow-sm);
 }
 
 .kanban-station-header {
-  padding: 16px 18px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--bg-surface-elevated);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  gap: 6px;
+}
+
+.kanban-station-header strong {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .station-cards-flow {
-  padding: 12px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
+  gap: 8px;
+  overflow-y: visible;
   flex: 1;
 }
 
@@ -629,7 +656,7 @@ a {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 10px;
   cursor: pointer;
   transition: var(--transition);
   box-shadow: var(--shadow-sm);
@@ -787,10 +814,13 @@ a {
 .badge-inprogress { background-color: var(--status-inprogress-bg); color: var(--status-inprogress); }
 .badge-completed { background-color: var(--status-completed-bg); color: var(--status-completed); }
 .badge-revision { background-color: var(--status-revision-bg); color: var(--status-revision); }
+.badge-pending_approval { background-color: var(--status-revision-bg); color: var(--status-revision); }
 
 .badge-mat-porcelain { background-color: var(--mat-porcelain-bg); color: var(--mat-porcelain); }
 .badge-mat-zirconia { background-color: var(--mat-zirconia-bg); color: var(--mat-zirconia); }
 .badge-mat-emax { background-color: var(--mat-emax-bg); color: var(--mat-emax); }
+.badge-mat-lamina { background-color: var(--mat-lamina-bg); color: var(--mat-lamina); }
+.badge-mat-mdp { background-color: var(--mat-mdp-bg); color: var(--mat-mdp); }
 .badge-mat-implant { background-color: var(--mat-implant-bg); color: var(--mat-implant); }
 
 /* ==========================================================================
@@ -978,9 +1008,24 @@ a {
   box-shadow: 0 0 0 2px var(--dental-blue);
 }
 
-.job-card.is-dragging {
-  opacity: 0.4;
-  transform: scale(0.96);
+.job-card-date-input {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 3px 6px;
+  color: var(--text-primary);
+  max-width: 148px;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  color-scheme: inherit;
+}
+
+.job-card-date-input:focus {
+  border-color: var(--dental-blue);
 }
 
 .job-card-actions {
@@ -1012,6 +1057,11 @@ a {
 .job-advance-btn:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
+}
+
+.job-porcelain-btn {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  flex: 1.2;
 }
 
 .job-regress-btn {
@@ -1572,7 +1622,7 @@ a {
     flex: 0 0 calc(100vw - 24px);
     max-width: calc(100vw - 24px);
     scroll-snap-align: start;
-    max-height: calc(100dvh - 260px);
+    max-height: none;
   }
 
   .kanban-station-col.is-single-station {
@@ -2057,6 +2107,133 @@ a {
     text-align: center;
   }
 }
+
+/* Giriş sayfası */
+.login-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(2, 132, 199, 0.16), transparent 42%),
+    radial-gradient(circle at bottom left, rgba(13, 148, 136, 0.14), transparent 40%),
+    var(--bg-app);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 32px 32px 26px;
+  box-shadow: var(--shadow-md, 0 16px 40px rgba(15, 23, 42, 0.08));
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.login-brand .brand-icon-dental {
+  margin: 0 auto 4px;
+}
+
+.login-brand h1 {
+  margin: 8px 0 4px;
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.login-brand p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-form .form-item {
+  gap: 4px;
+  margin: 0;
+}
+
+.login-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-wrap .login-field-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.login-input-wrap .dental-input {
+  width: 100%;
+  padding: 12px 44px 12px 40px;
+  font-size: 0.95rem;
+}
+
+.login-eye-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  border-radius: 6px;
+}
+
+.login-eye-btn:hover {
+  color: var(--dental-blue);
+  background: rgba(2, 132, 199, 0.08);
+}
+
+.login-submit-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.login-error {
+  background: var(--status-urgent-bg);
+  color: var(--status-urgent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.login-hint {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 
 
 

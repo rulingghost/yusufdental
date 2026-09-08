@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDental } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
-import { X, Sparkles, UserPlus, Calendar, Clock, DollarSign } from 'lucide-react';
+import { X, Sparkles, UserPlus, Calendar, Clock, DollarSign, Paperclip } from 'lucide-react';
 
 export const OrderModal = () => {
   const {
@@ -16,8 +17,11 @@ export const OrderModal = () => {
     setIsTeamModalOpen,
     saveOrder,
     savePatient,
-    showToast
+    showToast,
+    editingOrder,
+    setEditingOrder
   } = useDental();
+  const { currentUser, isAdmin, isOperator } = useAuth();
 
   const [companyId, setCompanyId] = useState('');
   const [doctorId, setDoctorId] = useState('');
@@ -26,7 +30,7 @@ export const OrderModal = () => {
   const [newPatientName, setNewPatientName] = useState('');
   const [assignedTech, setAssignedTech] = useState('');
 
-  const [materialId, setMaterialId] = useState('zirconia');
+  const [materialId, setMaterialId] = useState('mdp');
   const [shade, setShade] = useState('A2');
   const [priority, setPriority] = useState('normal');
   const [trialDate, setTrialDate] = useState('');
@@ -34,10 +38,31 @@ export const OrderModal = () => {
   const [price, setPrice] = useState(3500);
   const [notes, setNotes] = useState('');
   const [selectedTeeth, setSelectedTeeth] = useState(['11', '21']);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const fileInputRef = useRef(null);
 
   // Akıllı Varsayılanlar & Tarihler
   useEffect(() => {
     if (isOrderModalOpen) {
+      if (editingOrder) {
+        setCompanyId(editingOrder.companyId || '');
+        setDoctorId(editingOrder.doctorId || '');
+        setPatientId(editingOrder.patientId || '');
+        setIsNewPatient(false);
+        setNewPatientName('');
+        setAssignedTech(editingOrder.steps?.[0]?.technician || '');
+        setMaterialId(editingOrder.materialId === 'porcelain' ? 'mdp' : (editingOrder.materialId || 'mdp'));
+        setShade(editingOrder.shade || 'A2');
+        setPriority(editingOrder.priority || 'normal');
+        setTrialDate(editingOrder.trialDate || '');
+        setDeliveryDate(editingOrder.deliveryDate || '');
+        setPrice(editingOrder.price || 0);
+        setNotes(editingOrder.notes || '');
+        setSelectedTeeth(editingOrder.teeth || []);
+        setAttachedFiles([]);
+        return;
+      }
+
       const today = new Date();
       const trial = new Date(today);
       trial.setDate(today.getDate() + 3);
@@ -45,6 +70,8 @@ export const OrderModal = () => {
       delivery.setDate(today.getDate() + 5);
       setTrialDate(trial.toISOString().split('T')[0]);
       setDeliveryDate(delivery.toISOString().split('T')[0]);
+      setMaterialId('mdp');
+      setAttachedFiles([]);
 
       // İlk firma ve doktoru otomatik seç (Boş bekleme süresini sıfırla)
       if (!companyId && companies.length > 0) {
@@ -60,7 +87,7 @@ export const OrderModal = () => {
         }
       }
     }
-  }, [isOrderModalOpen, companies, doctors, patients]);
+  }, [isOrderModalOpen, editingOrder, companies, doctors, patients]);
 
   // Diş sayısı değiştikçe bedel önerisi
   useEffect(() => {
@@ -113,18 +140,39 @@ export const OrderModal = () => {
       return;
     }
 
-    const template = materials[materialId] || materials.zirconia;
-    const steps = template.steps.map((s, idx) => ({
-      order: s.order,
-      name: s.name,
-      description: s.description,
-      status: idx === 0 ? 'in_progress' : 'pending',
-      technician: assignedTech || s.defaultTechnician || (technicians && technicians[0]) || 'Yusuf Usta',
-      startedAt: idx === 0 ? new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }) : null,
-      notes: ''
-    }));
+    const template = materials[materialId] || materials.mdp;
+    const needsApproval = isOperator && !isAdmin;
+    const keepSteps = editingOrder && editingOrder.materialId === materialId && Array.isArray(editingOrder.steps);
+    const now = new Date().toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+    const steps = keepSteps
+      ? editingOrder.steps
+      : template.steps.map((s, idx) => {
+          if (needsApproval) {
+            return {
+              order: s.order,
+              name: s.name,
+              description: s.description,
+              status: idx === 0 ? 'in_progress' : 'pending',
+              technician: assignedTech || s.defaultTechnician || (technicians && technicians[0]) || 'Yusuf Usta',
+              startedAt: idx === 0 ? now : null,
+              notes: ''
+            };
+          }
+          return {
+            order: s.order,
+            name: s.name,
+            description: s.description,
+            status: idx === 0 ? 'completed' : (idx === 1 ? 'in_progress' : 'pending'),
+            technician: assignedTech || s.defaultTechnician || (technicians && technicians[0]) || 'Yusuf Usta',
+            startedAt: idx === 1 ? now : null,
+            completedAt: idx === 0 ? now : null,
+            completedDate: idx === 0 ? new Date().toISOString().split('T')[0] : null,
+            notes: ''
+          };
+        });
 
-    saveOrder({
+    const saved = saveOrder({
+      ...(editingOrder || {}),
       companyId,
       doctorId,
       patientId: finalPatientId,
@@ -132,22 +180,51 @@ export const OrderModal = () => {
       teeth: selectedTeeth,
       shade,
       priority,
-      status: 'in_progress',
-      orderDate: new Date().toISOString().split('T')[0],
+      status: needsApproval ? 'pending_approval' : (editingOrder?.status || 'in_progress'),
+      createdBy: editingOrder?.createdBy || currentUser?.id,
+      orderDate: editingOrder?.orderDate || new Date().toISOString().split('T')[0],
       trialDate,
       deliveryDate,
       price: parseFloat(price) || 0,
       notes,
-      currentStepIndex: 0,
+      currentStepIndex: keepSteps ? (editingOrder?.currentStepIndex || 0) : (needsApproval ? 0 : 1),
       steps
     });
 
+    if (!saved) return;
+
     setIsOrderModalOpen(false);
-    showToast(`İş emri başarıyla başlatıldı ve üretim hattına alındı ✓`, 'success');
+    setEditingOrder(null);
+    showToast(
+      needsApproval
+        ? (editingOrder ? 'İş emri güncellendi. Yönetici onayı bekleniyor.' : 'İş emri gönderildi. Yönetici onayından sonra üretim başlayacak.')
+        : 'İş emri başarıyla başlatıldı ve üretim hattına alındı ✓',
+      'success'
+    );
+  };
+
+  const closeModal = () => {
+    setAttachedFiles([]);
+    setIsOrderModalOpen(false);
+    setEditingOrder(null);
+  };
+
+  const handlePickFiles = (e) => {
+    const picked = Array.from(e.target.files || []);
+    if (!picked.length) return;
+    setAttachedFiles(prev => {
+      const names = new Set(prev.map(f => f.name));
+      const next = [...prev];
+      picked.forEach(file => {
+        if (!names.has(file.name)) next.push(file);
+      });
+      return next;
+    });
+    e.target.value = '';
   };
 
   return (
-    <div className="modal-overlay" onClick={() => setIsOrderModalOpen(false)}>
+    <div className="modal-overlay" onClick={closeModal}>
       <div className="modal-dialog-box" onClick={e => e.stopPropagation()}>
         <div className="modal-dialog-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -155,15 +232,19 @@ export const OrderModal = () => {
               <Sparkles size={18} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Yeni Diş Protez İş Emri</h3>
-              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Hızlı seçim tuşları ile saniyeler içinde başlatın</span>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                {editingOrder ? 'İş Emrini Düzenle' : 'Yeni Diş Protez İş Emri'}
+              </h3>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                {editingOrder ? 'Onaylanana kadar bilgileri güncelleyebilirsiniz' : 'Hızlı seçim tuşları ile saniyeler içinde başlatın'}
+              </span>
             </div>
           </div>
           <button
             type="button"
             className="btn-dental btn-dental-secondary"
             style={{ padding: 6, borderRadius: '50%' }}
-            onClick={() => setIsOrderModalOpen(false)}
+            onClick={closeModal}
           >
             <X size={18} />
           </button>
@@ -277,21 +358,9 @@ export const OrderModal = () => {
                 </select>
               </div>
 
-              {/* VITA Rengi ve Hızlı Renk Tuşları */}
+              {/* VITA Rengi */}
               <div className="form-item">
                 <label>VITA Diş Rengi *</label>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
-                  {['A1', 'A2', 'A3', 'A3.5', 'B1', 'B2', 'BL2', 'BL3'].map(s => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`quick-chip-btn ${shade === s ? 'active' : ''}`}
-                      onClick={() => setShade(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
                 <select
                   className="dental-input"
                   value={shade}
@@ -329,6 +398,7 @@ export const OrderModal = () => {
               <div className="form-item">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label>Sorumlu Teknisyen</label>
+                  {isAdmin && (
                   <button
                     type="button"
                     style={{ background: 'none', border: 'none', color: 'var(--dental-blue)', fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline' }}
@@ -338,6 +408,7 @@ export const OrderModal = () => {
                   >
                     + Ekip Yönetimi
                   </button>
+                  )}
                 </div>
                 <select
                   className="dental-input"
@@ -400,6 +471,66 @@ export const OrderModal = () => {
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
+
+              <div className="form-item span-all">
+                <label>STL / Tarama Dosyası</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".stl,.STL"
+                  multiple
+                  onChange={handlePickFiles}
+                  style={{ display: 'none' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-dental btn-dental-secondary btn-dental-sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip size={14} />
+                    <span>Ekle</span>
+                  </button>
+                  {attachedFiles.length === 0 && (
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      Dosya seçilmedi
+                    </span>
+                  )}
+                </div>
+                {attachedFiles.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                    {attachedFiles.map(file => (
+                      <div
+                        key={file.name}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          padding: '8px 10px',
+                          background: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 8,
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-dental btn-dental-secondary btn-dental-sm"
+                          style={{ padding: '4px 6px' }}
+                          onClick={() => setAttachedFiles(prev => prev.filter(f => f.name !== file.name))}
+                          title="Kaldır"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* İNTERAKTİF DİŞ ŞEMASI & HIZLI ŞABLONLAR */}
@@ -426,7 +557,7 @@ export const OrderModal = () => {
             <button
               type="button"
               className="btn-dental btn-dental-secondary"
-              onClick={() => setIsOrderModalOpen(false)}
+              onClick={closeModal}
             >
               Vazgeç
             </button>
@@ -434,7 +565,7 @@ export const OrderModal = () => {
               type="submit"
               className="btn-dental btn-dental-primary"
             >
-              ✓ İş Emrini Hemen Başlat
+              {editingOrder ? '✓ Değişiklikleri Kaydet' : '✓ İş Emrini Hemen Başlat'}
             </button>
           </div>
         </form>

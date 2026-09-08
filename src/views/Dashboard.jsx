@@ -14,28 +14,25 @@ import {
   User,
   ExternalLink
 } from 'lucide-react';
+import { StepDateModal } from '../components/StepDateModal';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { orders, companies, doctors, patients, materials, technicians, searchQuery, setIsOrderModalOpen } = useDental();
+  const { orders, companies, doctors, patients, materials, technicians, searchQuery, setIsOrderModalOpen, approveOrder, rejectOrder } = useDental();
   const [expandedRecentId, setExpandedRecentId] = useState(null);
+  const [approveTargetId, setApproveTargetId] = useState(null);
 
   const toggleExpandRecent = (id) => {
     setExpandedRecentId(prev => prev === id ? null : id);
   };
 
   const activeOrders = orders.filter(o => o.status === 'in_progress');
+  const pendingOrders = orders.filter(o => o.status === 'pending_approval');
   const completedOrders = orders.filter(o => o.status === 'completed');
   const urgentOrders = orders.filter(o => o.priority === 'urgent' && o.status !== 'completed');
 
   // Materyal İstatistikleri
   const totalOrdersCount = orders.length || 1;
-  const matStats = {
-    zirconia: orders.filter(o => o.materialId === 'zirconia').length,
-    porcelain: orders.filter(o => o.materialId === 'porcelain').length,
-    implant: orders.filter(o => o.materialId === 'implant').length,
-    emax: orders.filter(o => o.materialId === 'emax').length
-  };
 
   // Teknisyen Yükü
   const techWorkload = {};
@@ -86,6 +83,24 @@ export const Dashboard = () => {
         </div>
       </div>
 
+      {pendingOrders.length > 0 && (
+        <div className="dental-card" style={{ marginBottom: 16, borderLeft: '4px solid var(--status-revision)' }}>
+          <strong style={{ display: 'block', marginBottom: 10 }}>Onay bekleyen iş emirleri ({pendingOrders.length})</strong>
+          {pendingOrders.map(o => {
+            const pat = patients.find(p => p.id === o.patientId);
+            return (
+              <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 700 }}>#{o.id} • {pat?.name || 'Hasta'}</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button type="button" className="btn-dental btn-dental-primary btn-dental-sm" onClick={() => setApproveTargetId(o.id)}>Onayla</button>
+                  <button type="button" className="btn-dental btn-dental-danger btn-dental-sm" onClick={() => rejectOrder(o.id)}>Reddet</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* KPI Kartları */}
       <div className="kpi-row">
         <div className="dental-card">
@@ -135,45 +150,20 @@ export const Dashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
-                <span>Zirkonyum (CAD/CAM Kazıma)</span>
-                <strong>{matStats.zirconia} (%{Math.round(matStats.zirconia / totalOrdersCount * 100)})</strong>
-              </div>
-              <div style={{ height: 6, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${matStats.zirconia / totalOrdersCount * 100}%`, background: 'var(--dental-blue)' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
-                <span>Porselen (PFM Metal Destekli Seramik)</span>
-                <strong>{matStats.porcelain} (%{Math.round(matStats.porcelain / totalOrdersCount * 100)})</strong>
-              </div>
-              <div style={{ height: 6, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${matStats.porcelain / totalOrdersCount * 100}%`, background: 'var(--mat-porcelain)' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
-                <span>İmplant Üstü Protez (Ti-Base)</span>
-                <strong>{matStats.implant} (%{Math.round(matStats.implant / totalOrdersCount * 100)})</strong>
-              </div>
-              <div style={{ height: 6, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${matStats.implant / totalOrdersCount * 100}%`, background: 'var(--status-completed)' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
-                <span>E-Max Tam Seramik (Lityum Disilikat)</span>
-                <strong>{matStats.emax} (%{Math.round(matStats.emax / totalOrdersCount * 100)})</strong>
-              </div>
-              <div style={{ height: 6, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${matStats.emax / totalOrdersCount * 100}%`, background: 'var(--mat-emax)' }} />
-              </div>
-            </div>
+            {Object.values(materials).map(mat => {
+              const count = orders.filter(o => o.materialId === mat.id).length;
+              return (
+                <div key={mat.id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: 4 }}>
+                    <span>{mat.name}</span>
+                    <strong>{count} (%{Math.round(count / totalOrdersCount * 100)})</strong>
+                  </div>
+                  <div style={{ height: 6, background: 'var(--border-subtle)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${count / totalOrdersCount * 100}%`, background: mat.color }} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -238,7 +228,7 @@ export const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {recentOrders.slice(0, 5).map(o => {
+              {recentOrders.map(o => {
                 const pat = patients.find(p => p.id === o.patientId);
                 const doc = doctors.find(d => d.id === o.doctorId);
                 const comp = companies.find(c => c.id === o.companyId);
@@ -359,7 +349,7 @@ export const Dashboard = () => {
 
         {/* Mobil Kart Görünümü (Telefonlarda Tıklanınca Açılan Akordiyon Kartlar) */}
         <div className="mobile-order-cards">
-          {recentOrders.slice(0, 5).map(o => {
+          {recentOrders.map(o => {
             const pat = patients.find(p => p.id === o.patientId);
             const doc = doctors.find(d => d.id === o.doctorId);
             const comp = companies.find(c => c.id === o.companyId);
@@ -447,6 +437,18 @@ export const Dashboard = () => {
           })}
         </div>
       </div>
+      {approveTargetId && (
+        <StepDateModal
+          title="İş emrini onayla"
+          subtitle="Onay tarihini seçin. İş bu tarihten sonra üretim hattına alınır."
+          confirmLabel="Onayla ve başlat"
+          onConfirm={(date) => {
+            approveOrder(approveTargetId, date);
+            setApproveTargetId(null);
+          }}
+          onCancel={() => setApproveTargetId(null)}
+        />
+      )}
     </div>
   );
 };

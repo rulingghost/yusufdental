@@ -1,27 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDental } from '../context/DentalContext';
-import { Plus, Printer, Trash2, RotateCcw, CheckCircle2, Factory, ChevronDown, ChevronUp, ExternalLink, ArrowRight } from 'lucide-react';
+import { useDental, isOrderFromCompletedImplant } from '../context/DentalContext';
+import { useAuth } from '../context/AuthContext';
+import { Plus, Printer, Trash2, RotateCcw, CheckCircle2, Factory, ChevronDown, ChevronUp, ExternalLink, Pencil, ClipboardList } from 'lucide-react';
 import { PrintSlip } from '../components/PrintSlip';
+import { StepDateModal } from '../components/StepDateModal';
 
 export const OrdersView = () => {
   const navigate = useNavigate();
-  const { orders, companies, doctors, patients, materials, deleteOrder, restartOrder, searchQuery, setIsOrderModalOpen } = useDental();
+  const { orders, companies, doctors, patients, materials, deleteOrder, restartOrder, searchQuery, setIsOrderModalOpen, setEditingOrder, approveOrder } = useDental();
 
   // 'active' (Üretim aşamasındakiler) vs 'completed' (Tamamlananlar bölümü)
-  const [tabMode, setTabMode] = useState('active');
+  const { isAdmin, isOperator, isCompany } = useAuth();
+  const [tabMode, setTabMode] = useState(isCompany ? 'all' : 'active');
   const [filterMaterial, setFilterMaterial] = useState('');
   const [printingOrder, setPrintingOrder] = useState(null);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [approveTargetId, setApproveTargetId] = useState(null);
 
   const toggleExpandOrder = (id) => {
     setExpandedOrderId(prev => prev === id ? null : id);
   };
 
-  const activeOrdersCount = orders.filter(o => o.status !== 'completed').length;
+  const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'rejected').length;
   const completedOrdersCount = orders.filter(o => o.status === 'completed').length;
 
   let filtered = orders.filter(o => {
+    if (tabMode === 'all') return true;
     if (tabMode === 'active') return o.status !== 'completed';
     return o.status === 'completed';
   });
@@ -64,20 +69,37 @@ export const OrdersView = () => {
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">İş Emirleri & Sipariş Takibi</h2>
+          <h2 className="page-title">{isCompany ? 'İş Emirlerim' : (isOperator ? 'İş Emirlerim' : 'İş Emirleri & Sipariş Takibi')}</h2>
           <p className="page-subtitle">
-            {tabMode === 'active'
+            {isCompany
+              ? 'Kliniğinize ait tüm iş emirleri: üretimde, onay bekleyen ve tamamlananlar. Yalnızca kendi işlerinizi görürsünüz.'
+              : (isOperator
+              ? 'Yeni iş emri verebilirsiniz. Onaylanana kadar kendi emrinizi düzenleyebilirsiniz; onaydan sonra yalnızca durumunu görürsünüz.'
+              : (tabMode === 'active'
               ? 'Yalnızca aktif üretim aşamasındaki işlemler listeleniyor'
-              : 'Tamamlanan protezlerin ayrı arşivi (Buradan istediğiniz işi üretime geri çevirebilirsiniz)'}
+              : (tabMode === 'all'
+              ? 'Tüm iş emirleri listeleniyor'
+              : 'Tamamlanan protezlerin ayrı arşivi (Buradan istediğiniz işi üretime geri çevirebilirsiniz)')))}
           </p>
         </div>
 
         <div className="page-header-actions">
           <div className="segmented-tabs">
+            {isCompany && (
+              <button
+                type="button"
+                className={`btn-dental btn-dental-sm ${tabMode === 'all' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
+                style={{ border: 'none' }}
+                onClick={() => setTabMode('all')}
+              >
+                <ClipboardList size={15} />
+                <span>Tümü ({orders.length})</span>
+              </button>
+            )}
             <button
               type="button"
               className={`btn-dental btn-dental-sm ${tabMode === 'active' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
-              style={{ border: 'none' }}
+              style={{ border: 'none', marginLeft: isCompany ? 4 : 0 }}
               onClick={() => setTabMode('active')}
             >
               <Factory size={15} />
@@ -94,14 +116,19 @@ export const OrdersView = () => {
             </button>
           </div>
 
+          {!isCompany && (
           <button
             type="button"
             className="btn-dental btn-dental-primary desktop-only"
-            onClick={() => setIsOrderModalOpen(true)}
+            onClick={() => {
+              setEditingOrder(null);
+              setIsOrderModalOpen(true);
+            }}
           >
             <Plus size={18} />
             <span>Yeni İş Emri Başlat</span>
           </button>
+          )}
         </div>
       </div>
 
@@ -115,14 +142,15 @@ export const OrdersView = () => {
             onChange={(e) => setFilterMaterial(e.target.value)}
           >
             <option value="">Tüm Materyaller</option>
-            <option value="porcelain">Porselen Diş (PFM)</option>
-            <option value="zirconia">Zirkonyum (CAD/CAM)</option>
-            <option value="emax">E-Max Tam Seramik</option>
-            <option value="implant">İmplant Üstü Protez</option>
+            {Object.values(materials).map(m => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
           </select>
 
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {tabMode === 'active' ? 'Sadece tamamlanmayan aktif işler gösteriliyor' : 'Tamamlanan arşivlenmiş işler'}
+            {tabMode === 'all'
+              ? 'Kliniğinize ait tüm iş emirleri'
+              : (tabMode === 'active' ? 'Sadece tamamlanmayan aktif işler gösteriliyor' : 'Tamamlanan arşivlenmiş işler')}
           </span>
         </div>
 
@@ -145,7 +173,9 @@ export const OrdersView = () => {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                    {tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'}
+                    {tabMode === 'all'
+                      ? 'Bu kliniğe ait iş emri yok.'
+                      : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.')}
                   </td>
                 </tr>
               ) : (
@@ -194,6 +224,11 @@ export const OrdersView = () => {
                           <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', marginLeft: 4, fontWeight: 700 }}>
                             {o.shade}
                           </span>
+                          {isOrderFromCompletedImplant(o) && (
+                            <span className="badge-pill badge-completed" style={{ marginLeft: 4 }}>
+                              İmplant tamamlandı
+                            </span>
+                          )}
                         </td>
                         <td>
                           <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
@@ -209,13 +244,27 @@ export const OrdersView = () => {
                           <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{o.priority}</div>
                         </td>
                         <td>
-                          <span className={`badge-pill badge-${o.status}`}>
-                            {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : o.status)}
+                          <span className={`badge-pill ${o.status === 'pending_approval' ? 'badge-revision' : `badge-${o.status}`}`}>
+                            {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'completed' ? 'Tamamlandı' : (o.status === 'pending_approval' ? 'Onay bekliyor' : o.status))}
                           </span>
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
-                            {o.status === 'completed' ? (
+                            {o.status === 'pending_approval' && isOperator && (
+                              <button
+                                type="button"
+                                className="btn-dental btn-dental-primary btn-dental-sm"
+                                onClick={() => {
+                                  setEditingOrder(o);
+                                  setIsOrderModalOpen(true);
+                                }}
+                              >
+                                <Pencil size={14} />
+                                <span>Düzenle</span>
+                              </button>
+                            )}
+
+                            {o.status === 'completed' && isAdmin && (
                               <button
                                 type="button"
                                 className="btn-dental btn-dental-primary btn-dental-sm"
@@ -226,7 +275,30 @@ export const OrdersView = () => {
                                 <RotateCcw size={14} />
                                 <span>Yeniden Başlat</span>
                               </button>
-                            ) : (
+                            )}
+
+                            {o.status === 'pending_approval' && isAdmin && (
+                              <button
+                                type="button"
+                                className="btn-dental btn-dental-primary btn-dental-sm"
+                                onClick={() => setApproveTargetId(o.id)}
+                              >
+                                Onayla
+                              </button>
+                            )}
+
+                            {isCompany && (
+                              <button
+                                type="button"
+                                className="btn-dental btn-dental-secondary btn-dental-sm"
+                                onClick={() => navigate('/orders/' + o.id)}
+                                title="İş emri detayı"
+                              >
+                                Detay
+                              </button>
+                            )}
+
+                            {isAdmin && o.status !== 'completed' && o.status !== 'pending_approval' && (
                               <button
                                 type="button"
                                 className="btn-dental btn-dental-secondary btn-dental-sm"
@@ -237,6 +309,8 @@ export const OrdersView = () => {
                               </button>
                             )}
 
+                            {isAdmin && (
+                              <>
                             <button
                               type="button"
                               className="btn-dental btn-dental-secondary btn-dental-sm"
@@ -260,6 +334,8 @@ export const OrdersView = () => {
                             >
                               <Trash2 size={15} />
                             </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -286,14 +362,16 @@ export const OrdersView = () => {
                                 )}
                               </div>
 
+                              {(isAdmin || isCompany) && (
                               <button
                                 type="button"
                                 className="btn-dental btn-dental-primary btn-dental-sm"
                                 onClick={() => navigate('/orders/' + o.id)}
                               >
-                                <span>İş Emri Detayına & Odontograma Git</span>
+                                <span>{isCompany ? 'İş emri detayını aç' : 'İş Emri Detayına & Odontograma Git'}</span>
                                 <ExternalLink size={13} />
                               </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -310,7 +388,9 @@ export const OrdersView = () => {
         <div className="mobile-order-cards">
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
-              {tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'}
+              {tabMode === 'all'
+                ? 'Bu kliniğe ait iş emri yok.'
+                : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.')}
             </div>
           ) : (
             filtered.map(o => {
@@ -342,8 +422,8 @@ export const OrdersView = () => {
                           🔴 Acil
                         </span>
                       )}
-                      <span className={`badge-pill badge-${o.status}`} style={{ fontSize: '0.7rem' }}>
-                        {o.status === 'in_progress' ? 'İşlemde' : 'Tamamlandı'}
+                      <span className={`badge-pill ${o.status === 'pending_approval' ? 'badge-revision' : `badge-${o.status}`}`} style={{ fontSize: '0.7rem' }}>
+                        {o.status === 'in_progress' ? 'İşlemde' : (o.status === 'pending_approval' ? 'Onay bekliyor' : 'Tamamlandı')}
                       </span>
                     </div>
                     <div className="card-expand-indicator">
@@ -377,6 +457,11 @@ export const OrdersView = () => {
                         <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
                           {mat.name.split('(')[0]}
                         </span>
+                        {isOrderFromCompletedImplant(o) && (
+                          <span className="badge-pill badge-completed" style={{ fontSize: '0.72rem' }}>
+                            İmplant tamamlandı
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
@@ -385,9 +470,34 @@ export const OrdersView = () => {
                         {o.notes && <div>📝 Not: <em>{o.notes}</em></div>}
                       </div>
 
-                      {/* Eylem Butonları */}
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
-                        {o.status === 'completed' ? (
+                        {o.status === 'pending_approval' && isOperator && (
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-primary btn-dental-sm"
+                            style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                            onClick={() => {
+                              setEditingOrder(o);
+                              setIsOrderModalOpen(true);
+                            }}
+                          >
+                            <Pencil size={13} />
+                            <span>Düzenle</span>
+                          </button>
+                        )}
+
+                        {o.status === 'pending_approval' && isAdmin && (
+                          <button
+                            type="button"
+                            className="btn-dental btn-dental-primary btn-dental-sm"
+                            style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                            onClick={() => setApproveTargetId(o.id)}
+                          >
+                            Onayla
+                          </button>
+                        )}
+
+                        {o.status === 'completed' && isAdmin ? (
                           <button
                             type="button"
                             className="btn-dental btn-dental-primary btn-dental-sm"
@@ -397,17 +507,19 @@ export const OrdersView = () => {
                             <RotateCcw size={13} />
                             <span>Yeniden Başlat</span>
                           </button>
-                        ) : (
+                        ) : (isAdmin && o.status !== 'pending_approval') || isCompany ? (
                           <button
                             type="button"
                             className="btn-dental btn-dental-primary btn-dental-sm"
                             style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
                             onClick={() => navigate('/orders/' + o.id)}
                           >
-                            <span>Aşamalar ➔</span>
+                            <span>{isCompany ? 'Detay' : 'Aşamalar ➔'}</span>
                           </button>
-                        )}
+                        ) : null}
 
+                        {isAdmin && (
+                          <>
                         <button
                           type="button"
                           className="btn-dental btn-dental-secondary btn-dental-sm"
@@ -431,6 +543,8 @@ export const OrdersView = () => {
                         >
                           <Trash2 size={14} />
                         </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -443,6 +557,18 @@ export const OrdersView = () => {
 
       {/* Yazdırma Alanı */}
       {printingOrder && <PrintSlip order={printingOrder} />}
+      {approveTargetId && (
+        <StepDateModal
+          title="İş emrini onayla"
+          subtitle="Onay tarihini seçin. İş bu tarihten sonra üretim hattına alınır."
+          confirmLabel="Onayla ve başlat"
+          onConfirm={(date) => {
+            approveOrder(approveTargetId, date);
+            setApproveTargetId(null);
+          }}
+          onCancel={() => setApproveTargetId(null)}
+        />
+      )}
     </div>
   );
 };
