@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Lock, User, ArrowRight, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
 
 export const LoginView = () => {
-  const { login, adminCredentials } = useAuth();
+  const { login } = useAuth();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +28,6 @@ export const LoginView = () => {
     }
 
     setLoading(true);
-    // Kısa ve akıcı bir geçiş hissi için hafif gecikme
     setTimeout(() => {
       const result = login(cleanUser, cleanPass);
       setLoading(false);
@@ -36,12 +35,6 @@ export const LoginView = () => {
         setError(result.error || 'Kullanıcı adı veya şifre hatalı.');
       }
     }, 150);
-  };
-
-  const handleQuickFill = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setError('');
   };
 
   return (
@@ -141,38 +134,6 @@ export const LoginView = () => {
             )}
           </button>
         </form>
-
-        {/* Hızlı Giriş / Demo Butonları */}
-        <div className="login-quick-section">
-          <div className="quick-divider">
-            <span>Hızlı Giriş Seçenekleri</span>
-          </div>
-          <div className="quick-chips-grid">
-            <button
-              type="button"
-              className={`quick-chip-btn ${username.toLowerCase() === (adminCredentials?.username || 'yusuf') ? 'active-chip' : ''}`}
-              onClick={() => handleQuickFill(adminCredentials?.username || 'yusuf', adminCredentials?.password || 'yusuf2026')}
-            >
-              <div className="chip-badge admin-chip-badge">
-                <ShieldCheck size={13} />
-                <span>Yönetici</span>
-              </div>
-              <span className="chip-label">{adminCredentials?.username || 'yusuf'}</span>
-            </button>
-
-            <button
-              type="button"
-              className={`quick-chip-btn ${username.toLowerCase() === 'kullanici' ? 'active-chip' : ''}`}
-              onClick={() => handleQuickFill('kullanici', '1234')}
-            >
-              <div className="chip-badge user-chip-badge">
-                <Sparkles size={13} />
-                <span>Kullanıcı</span>
-              </div>
-              <span className="chip-label">kullanici</span>
-            </button>
-          </div>
-        </div>
 
         {/* Alt Bilgi */}
         <div className="login-footer-note">
