@@ -229,6 +229,11 @@ export const OrdersView = () => {
                               İmplant tamamlandı
                             </span>
                           )}
+                          {o.stlFiles && o.stlFiles.length > 0 && (
+                            <span className="badge-pill" style={{ background: 'var(--status-inprogress-bg)', color: 'var(--dental-blue)', marginLeft: 4, fontWeight: 700 }} title={`${o.stlFiles.length} STL dosyası yüklü`}>
+                              📦 {o.stlFiles.length} STL
+                            </span>
+                          )}
                         </td>
                         <td>
                           <div style={{ fontSize: '0.84rem', fontWeight: 600 }}>{cur?.name || 'Tamamlandı'}</div>
@@ -360,6 +365,12 @@ export const OrdersView = () => {
                                     <span>{o.notes}</span>
                                   </div>
                                 )}
+                                {o.stlFiles && o.stlFiles.length > 0 && (
+                                  <div>
+                                    <span style={{ color: 'var(--text-secondary)' }}>📦 STL Dosyaları: </span>
+                                    <span style={{ fontWeight: 600, color: 'var(--dental-teal)' }}>{o.stlFiles.map(f => f.name).join(', ')}</span>
+                                  </div>
+                                )}
                               </div>
 
                               {(isAdmin || isCompany) && (
@@ -460,6 +471,11 @@ export const OrdersView = () => {
                         {isOrderFromCompletedImplant(o) && (
                           <span className="badge-pill badge-completed" style={{ fontSize: '0.72rem' }}>
                             İmplant tamamlandı
+                          </span>
+                        )}
+                        {o.stlFiles && o.stlFiles.length > 0 && (
+                          <span className="badge-pill" style={{ background: 'var(--status-inprogress-bg)', color: 'var(--dental-blue)', fontWeight: 700, fontSize: '0.72rem' }}>
+                            📦 {o.stlFiles.length} STL
                           </span>
                         )}
                       </div>

@@ -35,12 +35,13 @@ function safeIso(val) {
 export async function fetchAllFromSupabase() {
   try {
     const headers = getReadHeaders();
-    const [compRes, docRes, patRes, ordRes, stepRes] = await Promise.all([
+    const [compRes, docRes, patRes, ordRes, stepRes, fileRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/companies?select=*&order=created_at.desc&limit=10000`, { headers }),
       fetch(`${SUPABASE_URL}/rest/v1/doctors?select=*&order=created_at.desc&limit=10000`, { headers }),
       fetch(`${SUPABASE_URL}/rest/v1/patients?select=*&order=created_at.desc&limit=10000`, { headers }),
       fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc&limit=10000`, { headers }),
-      fetch(`${SUPABASE_URL}/rest/v1/order_steps?select=*&order=step_order.asc&limit=20000`, { headers })
+      fetch(`${SUPABASE_URL}/rest/v1/order_steps?select=*&order=step_order.asc&limit=20000`, { headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/order_files?select=*&order=uploaded_at.desc&limit=10000`, { headers }).catch(() => ({ ok: false }))
     ]);
 
     if (!compRes.ok || !docRes.ok || !patRes.ok || !ordRes.ok) {
@@ -48,12 +49,13 @@ export async function fetchAllFromSupabase() {
       return null;
     }
 
-    const [compData, docData, patData, ordData, stepData] = await Promise.all([
+    const [compData, docData, patData, ordData, stepData, fileData] = await Promise.all([
       compRes.json(),
       docRes.json(),
       patRes.json(),
       ordRes.json(),
-      stepRes.ok ? stepRes.json() : []
+      stepRes.ok ? stepRes.json() : [],
+      fileRes && fileRes.ok ? fileRes.json().catch(() => []) : []
     ]);
 
     // Snake_case -> camelCase dönüşümü
@@ -123,7 +125,18 @@ export async function fetchAllFromSupabase() {
         notes: o.notes || '',
         currentStepIndex: o.current_step_index || 0,
         createdAt: o.created_at,
-        steps: relatedSteps
+        steps: relatedSteps,
+        stlFiles: (fileData || [])
+          .filter(f => f.order_id === o.id)
+          .map(f => ({
+            id: f.id,
+            orderId: f.order_id,
+            name: f.file_name,
+            url: f.file_url,
+            size: f.file_size || 0,
+            type: f.file_type || 'stl',
+            uploadedAt: f.uploaded_at
+          }))
       };
     });
 
@@ -205,6 +218,14 @@ export async function saveOrderToSupabase(order) {
 export async function deleteOrderFromSupabase(orderId) {
   try {
     const headers = getHeaders();
+    await fetch(`${SUPABASE_URL}/rest/v1/order_files?order_id=eq.${orderId}`, {
+      method: 'DELETE',
+      headers
+    }).catch(() => {});
+    await fetch(`${SUPABASE_URL}/rest/v1/order_steps?order_id=eq.${orderId}`, {
+      method: 'DELETE',
+      headers
+    }).catch(() => {});
     await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
       method: 'DELETE',
       headers
@@ -346,15 +367,160 @@ export async function deletePatientFromSupabase(patientId) {
 export async function clearAllFromSupabase() {
   try {
     const headers = getHeaders();
-    // İlişkisel yabancı anahtar sırası: order_steps -> orders -> patients -> doctors -> companies
-    await fetch(`${SUPABASE_URL}/rest/v1/order_steps?step_order=gte.0`, { method: 'DELETE', headers });
-    await fetch(`${SUPABASE_URL}/rest/v1/orders?id=neq.dummy`, { method: 'DELETE', headers });
-    await fetch(`${SUPABASE_URL}/rest/v1/patients?id=neq.dummy`, { method: 'DELETE', headers });
-    await fetch(`${SUPABASE_URL}/rest/v1/doctors?id=neq.dummy`, { method: 'DELETE', headers });
-    await fetch(`${SUPABASE_URL}/rest/v1/companies?id=neq.dummy`, { method: 'DELETE', headers });
+    // İlişkisel yabancı anahtar sırası: order_files -> order_steps -> orders -> patients -> doctors -> companies
+    await fetch(`${SUPABASE_URL}/rest/v1/order_files?id=gte.0`, { method: 'DELETE', headers }).catch(() => {});
+    await fetch(`${SUPABASE_URL}/rest/v1/order_steps?step_order=gte.0`, { method: 'DELETE', headers }).catch(() => {});
+    await fetch(`${SUPABASE_URL}/rest/v1/orders?id=neq.dummy`, { method: 'DELETE', headers }).catch(() => {});
+    await fetch(`${SUPABASE_URL}/rest/v1/patients?id=neq.dummy`, { method: 'DELETE', headers }).catch(() => {});
+    await fetch(`${SUPABASE_URL}/rest/v1/doctors?id=neq.dummy`, { method: 'DELETE', headers }).catch(() => {});
+    await fetch(`${SUPABASE_URL}/rest/v1/companies?id=neq.dummy`, { method: 'DELETE', headers }).catch(() => {});
     return true;
   } catch (error) {
     console.error('clearAllFromSupabase error:', error);
     return false;
   }
 }
+
+// 11. STL DOSYASI YÜKLE (SUPABASE STORAGE + ORDER_FILES TABLOSU)
+export async function uploadStlToSupabase(file, orderId) {
+  try {
+    const bucket = 'stl-files';
+    const timestamp = Date.now();
+    const safeName = (file.name || 'tarama.stl')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .toLowerCase();
+    const filePath = `${orderId || 'draft'}/${timestamp}_${safeName}`;
+
+    // 1. Supabase Storage Bucket'ına Yükle
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${filePath}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+
+    if (!uploadRes.ok) {
+      const errJson = await uploadRes.json().catch(() => ({}));
+      const msg = errJson.message || errJson.error || uploadRes.statusText || 'Bilinmeyen hata';
+      console.error('Supabase Storage yükleme hatası:', msg);
+      if (uploadRes.status === 404 || msg?.includes('Bucket not found') || msg?.includes('not found')) {
+        throw new Error('Supabase Storage üzerinde "stl-files" bucket henüz oluşturulmamış! Lütfen Supabase panelinde Storage > New Bucket > "stl-files" (Public) oluşturun veya SQL kodunu çalıştırın.');
+      }
+      throw new Error(`Storage yükleme hatası: ${msg}`);
+    }
+
+    // 2. Herkese Açık Erişim URL'si
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${filePath}`;
+
+    // 3. order_files Tablosuna Kayıt Ekle
+    const fileRecord = {
+      order_id: orderId || null,
+      file_name: file.name,
+      file_url: publicUrl,
+      file_size: file.size || 0,
+      file_type: file.type || 'model/stl'
+    };
+
+    const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/order_files`, {
+      method: 'POST',
+      headers: {
+        ...getHeaders(),
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(fileRecord)
+    });
+
+    let savedDb = null;
+    if (dbRes.ok) {
+      const dbData = await dbRes.json().catch(() => null);
+      if (Array.isArray(dbData) && dbData[0]) {
+        savedDb = dbData[0];
+      }
+    }
+
+    return {
+      id: savedDb?.id || 'file-' + timestamp,
+      orderId: orderId || null,
+      name: file.name,
+      url: publicUrl,
+      size: file.size || 0,
+      type: file.type || 'model/stl',
+      uploadedAt: savedDb?.uploaded_at || new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('uploadStlToSupabase error:', error);
+    throw error;
+  }
+}
+
+// 12. STL DOSYASI SİL
+export async function deleteStlFromSupabase(fileId, fileUrl) {
+  try {
+    const headers = getHeaders();
+    if (fileId) {
+      await fetch(`${SUPABASE_URL}/rest/v1/order_files?id=eq.${fileId}`, {
+        method: 'DELETE',
+        headers
+      }).catch(() => {});
+    }
+    if (fileUrl && fileUrl.includes('/storage/v1/object/public/stl-files/')) {
+      const storagePath = fileUrl.split('/storage/v1/object/public/stl-files/')[1];
+      if (storagePath) {
+        await fetch(`${SUPABASE_URL}/storage/v1/object/stl-files/${storagePath}`, {
+          method: 'DELETE',
+          headers
+        }).catch(() => {});
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error('deleteStlFromSupabase error:', error);
+    return false;
+  }
+}
+
+// 13. SİPARİŞ DOSYALARINI ÇEK
+export async function fetchOrderFilesFromSupabase(orderId) {
+  try {
+    const headers = getReadHeaders();
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/order_files?order_id=eq.${orderId}&order=uploaded_at.desc`, { headers });
+    if (!res.ok) return [];
+    const data = await res.json().catch(() => []);
+    return (data || []).map(f => ({
+      id: f.id,
+      orderId: f.order_id,
+      name: f.file_name,
+      url: f.file_url,
+      size: f.file_size || 0,
+      type: f.file_type || 'stl',
+      uploadedAt: f.uploaded_at
+    }));
+  } catch (error) {
+    console.error('fetchOrderFilesFromSupabase error:', error);
+    return [];
+  }
+}
+
+// 14. TASLAK OLARAK YÜKLENEN DOSYALARI SİPARİŞ NUMARASIYLA BAĞLA
+export async function linkFilesToOrderInSupabase(orderId, fileIds = []) {
+  if (!orderId || !fileIds || !fileIds.length) return;
+  try {
+    const headers = getHeaders();
+    for (const fid of fileIds) {
+      if (fid && typeof fid !== 'string' || (typeof fid === 'string' && !fid.startsWith('temp-'))) {
+        await fetch(`${SUPABASE_URL}/rest/v1/order_files?id=eq.${fid}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ order_id: orderId })
+        }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('linkFilesToOrderInSupabase warning:', e);
+  }
+}
+

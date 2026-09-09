@@ -1,20 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDental, isOrderFromCompletedImplant, idsMatch } from '../context/DentalContext';
 import { useAuth } from '../context/AuthContext';
 import { PipelineStepper } from '../components/PipelineStepper';
 import { PrintSlip } from '../components/PrintSlip';
 import { StepDateModal } from '../components/StepDateModal';
-import { ArrowLeft, Printer, Edit3, X, Share2, Copy } from 'lucide-react';
+import { ArrowLeft, Printer, Edit3, X, Share2, Copy, Box, Download, Trash2, UploadCloud, Loader2 } from 'lucide-react';
+
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
 
 export const OrderDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { orders, companies, doctors, patients, materials, vitaShades, saveOrder, showToast, restartOrder, approveOrder } = useDental();
+  const {
+    orders,
+    companies,
+    doctors,
+    patients,
+    materials,
+    vitaShades,
+    saveOrder,
+    showToast,
+    restartOrder,
+    approveOrder,
+    uploadOrderStlFile,
+    deleteOrderStlFile
+  } = useDental();
   const { isAdmin, isCompany } = useAuth();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showApproveDate, setShowApproveDate] = useState(false);
+  const [isUploadingDetailFile, setIsUploadingDetailFile] = useState(false);
+  const detailFileInputRef = useRef(null);
 
   const order = orders.find(o => idsMatch(o.id, id));
 
@@ -111,6 +134,21 @@ export const OrderDetailView = () => {
       document.body.removeChild(textArea);
     }
     showToast('WhatsApp için sipariş bilgisi panoya kopyalandı! 📋', 'success');
+  };
+
+  const handleDetailFileUpload = async (e) => {
+    const files = Array.from(e.target?.files || []);
+    if (!files.length) return;
+    setIsUploadingDetailFile(true);
+    for (const file of files) {
+      try {
+        await uploadOrderStlFile(order.id, file);
+      } catch (err) {
+        console.error('File upload error:', err);
+      }
+    }
+    setIsUploadingDetailFile(false);
+    if (e.target) e.target.value = '';
   };
 
   const isCompleted = order.status === 'completed';
@@ -318,6 +356,136 @@ export const OrderDetailView = () => {
         {order.notes && (
           <div style={{ gridColumn: '1 / -1', padding: '10px 14px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--dental-blue)', fontSize: '0.88rem' }}>
             <strong>Hekim Özel Notu:</strong> {order.notes}
+          </div>
+        )}
+      </div>
+
+      {/* 3D STL & DİJİTAL TARAMA DOSYALARI */}
+      <div className="dental-card" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--status-inprogress-bg)', color: 'var(--dental-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Box size={20} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                3D STL & Dijital Tarama Dosyaları
+              </h3>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Supabase bulutunda saklanan dijital ölçü ve CAD/CAM model dosyaları
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <input
+              ref={detailFileInputRef}
+              type="file"
+              accept=".stl,.STL"
+              multiple
+              onChange={handleDetailFileUpload}
+              style={{ display: 'none' }}
+            />
+            <button
+              type="button"
+              className="btn-dental btn-dental-primary btn-dental-sm"
+              onClick={() => detailFileInputRef.current?.click()}
+              disabled={isUploadingDetailFile}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              {isUploadingDetailFile ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Yükleniyor...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={15} />
+                  <span>+ Yeni STL Yükle</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {(!order.stlFiles || order.stlFiles.length === 0) ? (
+          <div
+            onClick={() => detailFileInputRef.current?.click()}
+            style={{
+              padding: '24px 16px',
+              border: '2px dashed var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              textAlign: 'center',
+              cursor: 'pointer',
+              background: 'var(--bg-surface-elevated)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Box size={30} style={{ color: 'var(--text-muted)', marginBottom: 6 }} />
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Bu iş emrine ait henüz yüklenmiş STL dosyası bulunmuyor.
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              Yeni bir tarama dosyası eklemek için buraya tıklayın (.stl)
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {order.stlFiles.map((f, idx) => (
+              <div
+                key={f.id || idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 14px',
+                  background: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  gap: 10
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(6, 182, 212, 0.12)', color: 'var(--dental-cyan-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Box size={20} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.name}>
+                      {f.name}
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      {f.size ? formatBytes(f.size) : 'Bilinmeyen boyut'} • {f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString('tr-TR') : 'Bugün'}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <a
+                    href={f.url}
+                    download={f.name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-dental btn-dental-secondary btn-dental-sm"
+                    style={{ padding: '6px 10px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    title="İndir"
+                  >
+                    <Download size={14} />
+                    <span>İndir</span>
+                  </a>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="btn-dental btn-dental-secondary btn-dental-sm"
+                      style={{ padding: '6px 8px', color: 'var(--status-urgent)' }}
+                      onClick={() => deleteOrderStlFile(order.id, f.id, f.url)}
+                      title="Sil"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDental } from '../context/DentalContext';
 import { useAuth } from '../context/AuthContext';
 import { Odontogram } from './Odontogram';
-import { X, Sparkles, UserPlus, Calendar, Clock, DollarSign, Paperclip } from 'lucide-react';
+import { X, Sparkles, UserPlus, Calendar, Clock, DollarSign, Paperclip, Box, UploadCloud, Loader2 } from 'lucide-react';
+import { uploadStlToSupabase } from '../services/supabaseService';
+
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
 
 export const OrderModal = () => {
   const {
@@ -39,6 +48,7 @@ export const OrderModal = () => {
   const [notes, setNotes] = useState('');
   const [selectedTeeth, setSelectedTeeth] = useState(['11', '21']);
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const fileInputRef = useRef(null);
 
   // Akıllı Varsayılanlar & Tarihler
@@ -59,7 +69,7 @@ export const OrderModal = () => {
         setPrice(editingOrder.price || 0);
         setNotes(editingOrder.notes || '');
         setSelectedTeeth(editingOrder.teeth || []);
-        setAttachedFiles([]);
+        setAttachedFiles(editingOrder.stlFiles || []);
         return;
       }
 
@@ -107,7 +117,7 @@ export const OrderModal = () => {
     setDeliveryDate(d.toISOString().split('T')[0]);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!companyId) {
       alert('Lütfen bir Klinik seçin.');
@@ -138,6 +148,27 @@ export const OrderModal = () => {
     } else if (!patientId) {
       alert('Lütfen listeden bir hasta seçin veya "+ Yeni Hasta" butonuna basıp adını yazın.');
       return;
+    }
+
+    // Varsa yeni STL dosyalarını Supabase Storage'a yükle
+    let finalStlFiles = [];
+    if (attachedFiles && attachedFiles.length > 0) {
+      setIsUploadingFiles(true);
+      for (const item of attachedFiles) {
+        if (item.rawFile) {
+          try {
+            showToast(`${item.name} yükleniyor...`, 'info');
+            const uploaded = await uploadStlToSupabase(item.rawFile, editingOrder?.id);
+            finalStlFiles.push(uploaded);
+          } catch (err) {
+            console.error('File upload error:', err);
+            showToast(`${item.name} yüklenirken hata: ${err.message}`, 'error');
+          }
+        } else {
+          finalStlFiles.push(item);
+        }
+      }
+      setIsUploadingFiles(false);
     }
 
     const template = materials[materialId] || materials.mdp;
@@ -188,7 +219,8 @@ export const OrderModal = () => {
       price: parseFloat(price) || 0,
       notes,
       currentStepIndex: keepSteps ? (editingOrder?.currentStepIndex || 0) : (needsApproval ? 0 : 1),
-      steps
+      steps,
+      stlFiles: finalStlFiles
     });
 
     if (!saved) return;
@@ -210,17 +242,24 @@ export const OrderModal = () => {
   };
 
   const handlePickFiles = (e) => {
-    const picked = Array.from(e.target.files || []);
+    const picked = Array.from(e.target?.files || []);
     if (!picked.length) return;
     setAttachedFiles(prev => {
       const names = new Set(prev.map(f => f.name));
       const next = [...prev];
       picked.forEach(file => {
-        if (!names.has(file.name)) next.push(file);
+        if (!names.has(file.name)) {
+          next.push({
+            rawFile: file,
+            name: file.name,
+            size: file.size,
+            isNew: true
+          });
+        }
       });
       return next;
     });
-    e.target.value = '';
+    if (e.target) e.target.value = '';
   };
 
   return (
@@ -473,7 +512,16 @@ export const OrderModal = () => {
               </div>
 
               <div className="form-item span-all">
-                <label>STL / Tarama Dosyası</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0 }}>
+                    <Box size={16} style={{ color: 'var(--dental-blue)' }} />
+                    <span>3D STL & Dijital Tarama Dosyaları</span>
+                  </label>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Supabase Bulut Depolama (.stl)
+                  </span>
+                </div>
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -482,47 +530,86 @@ export const OrderModal = () => {
                   onChange={handlePickFiles}
                   style={{ display: 'none' }}
                 />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn-dental btn-dental-secondary btn-dental-sm"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Paperclip size={14} />
-                    <span>Ekle</span>
-                  </button>
-                  {attachedFiles.length === 0 && (
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      Dosya seçilmedi
-                    </span>
-                  )}
+
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handlePickFiles({ target: { files: e.dataTransfer.files } });
+                    }
+                  }}
+                  style={{
+                    border: '2px dashed var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '16px 20px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: 'var(--bg-surface-elevated)',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--status-inprogress-bg)', color: 'var(--dental-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <UploadCloud size={20} />
+                  </div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    STL Dosyalarını Seçin veya Sürükleyip Bırakın
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                    Üst çene, alt çene, kapanış taramaları • .stl formatı desteklenir
+                  </div>
                 </div>
+
                 {attachedFiles.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                    {attachedFiles.map(file => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                    {attachedFiles.map((file, idx) => (
                       <div
-                        key={file.name}
+                        key={file.id || file.name || idx}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          gap: 8,
-                          padding: '8px 10px',
-                          background: 'var(--bg-surface-elevated)',
+                          gap: 10,
+                          padding: '8px 12px',
+                          background: 'var(--bg-surface)',
                           border: '1px solid var(--border-subtle)',
                           borderRadius: 8,
-                          fontSize: '0.8rem'
+                          fontSize: '0.82rem'
                         }}
                       >
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {file.name}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                          <Box size={16} style={{ color: 'var(--dental-teal)', flexShrink: 0 }} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                            {file.name}
+                          </span>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                            ({formatBytes(file.size)})
+                          </span>
+                          {file.url ? (
+                            <span className="badge-pill badge-completed" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                              Yüklendi ✓
+                            </span>
+                          ) : (
+                            <span className="badge-pill" style={{ fontSize: '0.68rem', padding: '2px 6px', background: 'var(--status-inprogress-bg)', color: 'var(--dental-blue)' }}>
+                              Kaydedince Yüklenecek
+                            </span>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className="btn-dental btn-dental-secondary btn-dental-sm"
-                          style={{ padding: '4px 6px' }}
-                          onClick={() => setAttachedFiles(prev => prev.filter(f => f.name !== file.name))}
-                          title="Kaldır"
+                          style={{ padding: '4px 6px', color: 'var(--status-urgent)' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAttachedFiles(prev => prev.filter(f => (f.id ? f.id !== file.id : f.name !== file.name)));
+                          }}
+                          title="Listeden Kaldır"
                         >
                           <X size={13} />
                         </button>
@@ -564,8 +651,17 @@ export const OrderModal = () => {
             <button
               type="submit"
               className="btn-dental btn-dental-primary"
+              disabled={isUploadingFiles}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
             >
-              {editingOrder ? '✓ Değişiklikleri Kaydet' : '✓ İş Emrini Hemen Başlat'}
+              {isUploadingFiles ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Dosyalar Yükleniyor...</span>
+                </>
+              ) : (
+                editingOrder ? '✓ Değişiklikleri Kaydet' : '✓ İş Emrini Hemen Başlat'
+              )}
             </button>
           </div>
         </form>

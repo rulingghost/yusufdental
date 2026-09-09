@@ -72,14 +72,26 @@ CREATE TABLE IF NOT EXISTS order_steps (
     notes TEXT
 );
 
+-- 6. DİJİTAL TARAMA VE STL DOSYALARI (ORDER FILES)
+CREATE TABLE IF NOT EXISTS order_files (
+    id SERIAL PRIMARY KEY,
+    order_id VARCHAR(50) REFERENCES orders(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_url TEXT NOT NULL,
+    file_size BIGINT DEFAULT 0,
+    file_type VARCHAR(100) DEFAULT 'stl',
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ==========================================================================
--- 6. ROW LEVEL SECURITY (RLS) DEVRE DIŞI BIRAKMA & İZİNLER (Supabase İçin)
+-- 7. ROW LEVEL SECURITY (RLS) DEVRE DIŞI BIRAKMA & İZİNLER (Supabase İçin)
 -- ==========================================================================
 ALTER TABLE IF EXISTS companies DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS doctors DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS patients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS order_steps DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS order_files DISABLE ROW LEVEL SECURITY;
 
 -- Her ihtimale karşı tam açık erişim politikaları (RLS açık kalsa bile çalışır):
 DROP POLICY IF EXISTS "Public access" ON companies;
@@ -104,5 +116,27 @@ CREATE POLICY "Public access" ON order_files FOR ALL USING (true) WITH CHECK (tr
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+
+-- ==========================================================================
+-- 8. SUPABASE STORAGE (STL DOSYALARI BUCKET'I VE ERİŞİM İZİNLERİ)
+-- ==========================================================================
+-- 'stl-files' public depolama bucket'ı oluştur (100MB limit):
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'stl-files',
+    'stl-files',
+    true,
+    104857600,
+    ARRAY['*/*']
+)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Storage yükleme ve indirme için tam açık erişim politikası:
+DROP POLICY IF EXISTS "Public STL Access" ON storage.objects;
+CREATE POLICY "Public STL Access" ON storage.objects
+    FOR ALL
+    USING (bucket_id = 'stl-files')
+    WITH CHECK (bucket_id = 'stl-files');
+
 
 

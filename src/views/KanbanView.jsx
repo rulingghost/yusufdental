@@ -746,6 +746,21 @@ export const KanbanView = () => {
                                     İmplant tamamlandı
                                   </span>
                                 )}
+                                {order.stlFiles && order.stlFiles.length > 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.66rem',
+                                      fontWeight: 800,
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      color: 'var(--dental-blue)',
+                                      background: 'var(--status-inprogress-bg)'
+                                    }}
+                                    title={`${order.stlFiles.length} STL dosyası yüklü`}
+                                  >
+                                    📦 {order.stlFiles.length} STL
+                                  </span>
+                                )}
                               </div>
 
                               {/* Hasta Adı */}
@@ -831,6 +846,15 @@ export const KanbanView = () => {
                                   <span style={{ color: 'var(--text-secondary)' }}>👨‍⚕️ Sorumlu Hekim:</span>
                                   <span style={{ fontWeight: 600 }}>{doc?.name || '-'}</span>
                                 </div>
+
+                                {order.stlFiles && order.stlFiles.length > 0 && (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>📦 3D Tarama:</span>
+                                    <span style={{ fontWeight: 600, color: 'var(--dental-teal)', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={order.stlFiles.map(f => f.name).join(', ')}>
+                                      {order.stlFiles.length} STL ({order.stlFiles.map(f => f.name).join(', ')})
+                                    </span>
+                                  </div>
+                                )}
 
                                 {/* Sorumlu Teknisyen Seçimi */}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>

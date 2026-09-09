@@ -10,7 +10,10 @@ import {
   deleteDoctorFromSupabase,
   savePatientToSupabase,
   deletePatientFromSupabase,
-  clearAllFromSupabase
+  clearAllFromSupabase,
+  uploadStlToSupabase,
+  deleteStlFromSupabase,
+  linkFilesToOrderInSupabase
 } from '../services/supabaseService';
 
 const DentalContext = createContext(null);
@@ -588,8 +591,58 @@ export const DentalProvider = ({ children }) => {
       return { ...prev, orders };
     });
     saveOrderToSupabase(finalOrder);
+    if (Array.isArray(finalOrder.stlFiles) && finalOrder.stlFiles.length > 0) {
+      const fileIds = finalOrder.stlFiles.map(f => f.id).filter(Boolean);
+      linkFilesToOrderInSupabase(finalOrder.id, fileIds);
+    }
     showToast(`İş emri #${finalOrder.id} kaydedildi.`);
     return finalOrder;
+  };
+
+  const uploadOrderStlFile = async (orderId, file) => {
+    try {
+      showToast(`${file.name} yükleniyor...`, 'info');
+      const savedRecord = await uploadStlToSupabase(file, orderId);
+      setData(prev => {
+        const orders = prev.orders.map(o => {
+          if (o.id !== orderId) return o;
+          const currentFiles = o.stlFiles || [];
+          return {
+            ...o,
+            stlFiles: [savedRecord, ...currentFiles.filter(f => f.id !== savedRecord.id)]
+          };
+        });
+        return { ...prev, orders };
+      });
+      showToast(`✓ ${file.name} başarıyla yüklendi!`, 'success');
+      return savedRecord;
+    } catch (err) {
+      console.error('uploadOrderStlFile error:', err);
+      showToast(err.message || 'STL dosyası yüklenemedi.', 'error');
+      throw err;
+    }
+  };
+
+  const deleteOrderStlFile = async (orderId, fileId, fileUrl) => {
+    try {
+      await deleteStlFromSupabase(fileId, fileUrl);
+      setData(prev => {
+        const orders = prev.orders.map(o => {
+          if (o.id !== orderId) return o;
+          return {
+            ...o,
+            stlFiles: (o.stlFiles || []).filter(f => f.id !== fileId)
+          };
+        });
+        return { ...prev, orders };
+      });
+      showToast('STL dosyası silindi.', 'warning');
+      return true;
+    } catch (err) {
+      console.error('deleteOrderStlFile error:', err);
+      showToast('Dosya silinirken hata oluştu.', 'error');
+      return false;
+    }
   };
 
   const approveOrder = (orderId, completedDate = '') => {
@@ -1196,6 +1249,8 @@ export const DentalProvider = ({ children }) => {
         exportData,
         importData,
         saveOrder,
+        uploadOrderStlFile,
+        deleteOrderStlFile,
         approveOrder,
         rejectOrder,
         addStepToOrder,
