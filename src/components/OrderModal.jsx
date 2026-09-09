@@ -156,7 +156,7 @@ export const OrderModal = () => {
     }
 
     let finalDoctorId = doctorId;
-    if (isNewDoctor) {
+    if (isNewDoctor || (filteredDoctors.length === 0 && !doctorId)) {
       if (!newDoctorName.trim()) {
         alert('Lütfen hekim adını girin.');
         return;
@@ -175,7 +175,7 @@ export const OrderModal = () => {
     let finalPatientId = patientId;
 
     // Hızlı Hasta Ekleme (Hasta sayfasına gitmeye üşenilmesin)
-    if (isNewPatient) {
+    if (isNewPatient || (filteredPatients.length === 0 && !patientId)) {
       if (!newPatientName.trim()) {
         alert('Lütfen hasta adını girin.');
         return;
@@ -458,14 +458,14 @@ export const OrderModal = () => {
                   </button>
                 </div>
 
-                {isNewPatient ? (
+                {isNewPatient || (filteredPatients.length === 0 && !patientId) ? (
                   <input
                     type="text"
                     className="dental-input"
                     placeholder="Örn: Ayşe Demir"
                     value={newPatientName}
                     onChange={(e) => setNewPatientName(e.target.value)}
-                    autoFocus
+                    autoFocus={isNewPatient}
                     required
                   />
                 ) : (
@@ -766,7 +766,7 @@ export const OrderModal = () => {
                   <span>Dosyalar Yükleniyor...</span>
                 </>
               ) : (
-                editingOrder ? '✓ Değişiklikleri Kaydet' : '✓ İş Emrini Hemen Başlat'
+                editingOrder ? '✓ Değişiklikleri Kaydet' : (isCompany ? '✓ İş Emrini Onaya Gönder' : '✓ İş Emrini Hemen Başlat')
               )}
             </button>
           </div>

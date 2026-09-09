@@ -46,7 +46,8 @@ export const KanbanView = () => {
     setIsTeamModalOpen,
     assignTechnicianToStep,
     approveOrder,
-    rejectOrder
+    rejectOrder,
+    setEditingOrder
   } = useDental();
   const { isAdmin, isCompany } = useAuth();
   const readOnly = isCompany;
@@ -330,12 +331,29 @@ export const KanbanView = () => {
             <button
               type="button"
               className="btn-dental btn-dental-primary"
-              onClick={() => setIsOrderModalOpen(true)}
+              onClick={() => {
+                setEditingOrder(null);
+                setIsOrderModalOpen(true);
+              }}
             >
               <Plus size={17} strokeWidth={2.5} />
               <span>Yeni İş Emri Başlat</span>
             </button>
               </>
+            )}
+
+            {isCompany && (
+              <button
+                type="button"
+                className="btn-dental btn-dental-primary"
+                onClick={() => {
+                  setEditingOrder(null);
+                  setIsOrderModalOpen(true);
+                }}
+              >
+                <Plus size={17} strokeWidth={2.5} />
+                <span>+ Yeni İş Emri Ver</span>
+              </button>
             )}
           </div>
         </div>
@@ -586,14 +604,17 @@ export const KanbanView = () => {
               ? 'Kliniğinize ait iş emirleri laboratuvara düştüğünde aşamasını ve teslim tarihini burada görürsünüz.'
               : 'Sisteminiz tertemiz ve hazır. Sol menüden kliniklerinizi ve hekimlerinizi ekleyebilir, ardından yeni diş protez iş emirlerinizi başlatabilirsiniz.'}
           </p>
-          {isAdmin && (
+          {(isAdmin || isCompany) && (
           <button
             type="button"
             className="btn-dental btn-dental-primary"
-            onClick={() => setIsOrderModalOpen(true)}
+            onClick={() => {
+              setEditingOrder(null);
+              setIsOrderModalOpen(true);
+            }}
           >
             <Plus size={18} strokeWidth={2.5} />
-            <span>İlk İş Emrini Başlat</span>
+            <span>{isCompany ? '+ İlk İş Emrini Ver' : 'İlk İş Emrini Başlat'}</span>
           </button>
           )}
         </div>

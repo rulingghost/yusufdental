@@ -133,7 +133,7 @@ export const OrdersView = () => {
 
           <button
             type="button"
-            className="btn-dental btn-dental-primary desktop-only"
+            className="btn-dental btn-dental-primary"
             onClick={() => {
               setEditingOrder(null);
               setIsOrderModalOpen(true);
@@ -186,9 +186,24 @@ export const OrdersView = () => {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                    {tabMode === 'all'
-                      ? 'Bu kliniğe ait iş emri yok.'
-                      : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.')}
+                    <div style={{ marginBottom: isCompany ? 12 : 0 }}>
+                      {tabMode === 'all'
+                        ? 'Bu kliniğe ait iş emri yok.'
+                        : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.')}
+                    </div>
+                    {isCompany && (
+                      <button
+                        type="button"
+                        className="btn-dental btn-dental-primary"
+                        onClick={() => {
+                          setEditingOrder(null);
+                          setIsOrderModalOpen(true);
+                        }}
+                      >
+                        <Plus size={16} />
+                        <span>+ Yeni İş Emri Ver</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -429,11 +444,26 @@ export const OrdersView = () => {
         <div className="mobile-order-cards">
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
-              {tabMode === 'all'
-                ? 'Bu kliniğe ait iş emri yok.'
-                : (tabMode === 'pending'
-                  ? 'Onay bekleyen iş emri bulunmuyor.'
-                  : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'))}
+              <div style={{ marginBottom: isCompany ? 12 : 0 }}>
+                {tabMode === 'all'
+                  ? 'Bu kliniğe ait iş emri yok.'
+                  : (tabMode === 'pending'
+                    ? 'Onay bekleyen iş emri bulunmuyor.'
+                    : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'))}
+              </div>
+              {isCompany && (
+                <button
+                  type="button"
+                  className="btn-dental btn-dental-primary"
+                  onClick={() => {
+                    setEditingOrder(null);
+                    setIsOrderModalOpen(true);
+                  }}
+                >
+                  <Plus size={16} />
+                  <span>+ Yeni İş Emri Ver</span>
+                </button>
+              )}
             </div>
           ) : (
             filtered.map(o => {

@@ -100,7 +100,7 @@ const AppLayout = () => {
         </main>
       </div>
 
-      {!isCompany && <OrderModal />}
+      <OrderModal />
       {!(isCompany || isOperator) && <DatabaseConfigModal />}
       {!(isCompany || isOperator) && <TeamModal />}
       <MobileBottomNav />
