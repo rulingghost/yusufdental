@@ -147,7 +147,7 @@ export async function fetchAllFromSupabase() {
     if (sysTech?.address) {
       try {
         const parsed = JSON.parse(sysTech.address);
-        if (Array.isArray(parsed) && parsed.length > 0) technicians = parsed;
+        if (Array.isArray(parsed)) technicians = parsed;
       } catch (e) {}
     }
 
@@ -156,7 +156,7 @@ export async function fetchAllFromSupabase() {
     if (sysUsers?.address) {
       try {
         const parsed = JSON.parse(sysUsers.address);
-        if (Array.isArray(parsed) && parsed.length > 0) users = parsed;
+        if (Array.isArray(parsed)) users = parsed;
       } catch (e) {}
     }
 
@@ -601,7 +601,7 @@ export async function fetchTechniciansFromSupabase() {
     const rows = await res.json().catch(() => []);
     if (Array.isArray(rows) && rows.length > 0 && rows[0]?.address) {
       const parsed = JSON.parse(rows[0].address);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
     return null;
   } catch (error) {

@@ -220,11 +220,7 @@ export const VITA_SHADES = [
 
 export const TECHNICIANS_STORAGE_KEY = 'dentallab_technicians_v2';
 export const DEFAULT_TECHNICIANS = [
-  { id: 'tech-1', name: 'Yusuf Usta', role: 'Baş Teknisyen / Seramist' },
-  { id: 'tech-2', name: 'Murat Teknisyen', role: 'CAD/CAM Sorumlusu' },
-  { id: 'tech-3', name: 'Ali Usta', role: 'Metal & Altyapı Uzmanı' },
-  { id: 'tech-4', name: 'Ayşe Teknisyen', role: 'Alçı & Model Sorumlusu' },
-  { id: 'tech-5', name: 'Elif Teknisyen', role: 'Glaze & Polisaj Uzmanı' }
+  { id: 'tech-1', name: 'Yusuf Yaşar', role: 'Baş Teknisyen / Seramist' }
 ];
 
 export const TECHNICIANS = DEFAULT_TECHNICIANS.map(t => t.name);
@@ -376,8 +372,8 @@ export const DentalProvider = ({ children }) => {
           return next;
         });
 
-        // Teknisyenleri buluttan gelenle eşitle
-        if (Array.isArray(remote.technicians) && remote.technicians.length > 0) {
+        // Teknisyenleri buluttan gelenle eşitle (silinenler dahil kalıcı)
+        if (Array.isArray(remote.technicians)) {
           setTechniciansList(prev => {
             if (JSON.stringify(prev) === JSON.stringify(remote.technicians)) return prev;
             try {
@@ -1063,7 +1059,7 @@ export const DentalProvider = ({ children }) => {
   };
 
   // Teknisyen Ekleme / Çıkarma / Düzenleme (Bulut & Yerel Kalıcı Eşitlemeli)
-  const addTechnician = (name, role = 'Dental Teknisyen') => {
+  const addTechnician = async (name, role = 'Dental Teknisyen') => {
     if (denyProductionChange()) return null;
     if (!name || !name.trim()) return null;
     const trimmed = name.trim();
@@ -1076,61 +1072,49 @@ export const DentalProvider = ({ children }) => {
       name: trimmed,
       role: role.trim() || 'Dental Teknisyen'
     };
-    let nextList = [];
-    setTechniciansList(prev => {
-      nextList = [...prev, newTech];
-      try {
-        localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
-      } catch (e) {}
-      return nextList;
-    });
-    saveTechniciansToSupabase(nextList);
+    const nextList = [...techniciansList, newTech];
+    setTechniciansList(nextList);
+    try {
+      localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+    await saveTechniciansToSupabase(nextList);
     showToast(`Teknisyen "${trimmed}" başarıyla eklendi!`, 'success');
     return newTech;
   };
 
-  const removeTechnician = (techIdOrName) => {
+  const removeTechnician = async (techIdOrName) => {
     if (denyProductionChange()) return;
-    let nextList = [];
-    setTechniciansList(prev => {
-      nextList = prev.filter(t => t.id !== techIdOrName && t.name !== techIdOrName);
-      try {
-        localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
-      } catch (e) {}
-      return nextList;
-    });
-    saveTechniciansToSupabase(nextList);
+    const nextList = techniciansList.filter(t => t.id !== techIdOrName && t.name !== techIdOrName);
+    setTechniciansList(nextList);
+    try {
+      localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+    await saveTechniciansToSupabase(nextList);
     showToast('Teknisyen ekipten çıkarıldı.', 'info');
   };
 
-  const updateTechnician = (techId, updatedData) => {
+  const updateTechnician = async (techId, updatedData) => {
     if (denyProductionChange()) return null;
     let oldName = '';
-    let newName = (updatedData.name || '').trim();
-    let nextList = [];
-    let updatedObj = null;
-
-    setTechniciansList(prev => {
-      nextList = prev.map(t => {
-        if (t.id === techId || t.name === techId) {
-          oldName = t.name;
-          updatedObj = {
-            ...t,
-            ...updatedData,
-            name: newName || t.name,
-            role: updatedData.role !== undefined ? updatedData.role.trim() : t.role
-          };
-          return updatedObj;
-        }
-        return t;
-      });
-      try {
-        localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
-      } catch (e) {}
-      return nextList;
+    const newName = (updatedData.name || '').trim();
+    const nextList = techniciansList.map(t => {
+      if (t.id === techId || t.name === techId) {
+        oldName = t.name;
+        return {
+          ...t,
+          ...updatedData,
+          name: newName || t.name,
+          role: updatedData.role !== undefined ? updatedData.role.trim() : t.role
+        };
+      }
+      return t;
     });
 
-    saveTechniciansToSupabase(nextList);
+    setTechniciansList(nextList);
+    try {
+      localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
+    } catch (e) {}
+    await saveTechniciansToSupabase(nextList);
 
     // Eğer isim güncellendiyse mevcut iş emirlerinin aşamalarındaki ismi de güncelle
     if (oldName && newName && oldName !== newName) {
