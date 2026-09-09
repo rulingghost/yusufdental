@@ -161,18 +161,23 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
-  // Bulut kullanıcılarını çekip birleştir
+  const applyRemoteUsers = (remoteUsers) => {
+    if (!Array.isArray(remoteUsers) || remoteUsers.length === 0) return;
+    setUsers(prev => {
+      const merged = mergeUsers(prev, remoteUsers);
+      if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(merged));
+      } catch (e) {}
+      return merged;
+    });
+  };
+
   const syncUsersWithCloud = async () => {
     try {
       const remoteUsers = await fetchUsersFromSupabase();
       if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-        setUsers(prev => {
-          const merged = mergeUsers(prev, remoteUsers);
-          try {
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(merged));
-          } catch (e) {}
-          return merged;
-        });
+        applyRemoteUsers(remoteUsers);
       } else {
         // Eğer bulutta henüz kullanıcı kaydı yoksa yereldeki mevcut firma hesaplarını buluta aktar
         setUsers(prev => {
@@ -407,7 +412,9 @@ export const AuthProvider = ({ children }) => {
         deleteUser,
         upsertCompanyUser,
         deleteUsersByCompanyId,
-        clearAdminRecovery
+        clearAdminRecovery,
+        syncUsersWithCloud,
+        applyRemoteUsers
       }}
     >
       {children}

@@ -238,7 +238,7 @@ const EMPTY_INITIAL_DATA = {
 };
 
 export const DentalProvider = ({ children }) => {
-  const { currentUser, isCompany, isOperator, clearAdminRecovery } = useAuth();
+  const { currentUser, isCompany, isOperator, clearAdminRecovery, applyRemoteUsers } = useAuth();
   // Eski tüm mock önbellek anahtarlarını sil
   useEffect(() => {
     try {
@@ -289,6 +289,8 @@ export const DentalProvider = ({ children }) => {
   });
 
   const [isDbLoading, setIsDbLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date());
   const [dbStatus, setDbStatus] = useState('connected'); // 'connected' | 'connecting' | 'offline'
 
   const [theme, setTheme] = useState(() => localStorage.getItem('dental_theme') || 'light');
@@ -338,9 +340,10 @@ export const DentalProvider = ({ children }) => {
     }
   }, [dbConfig]);
 
-  // Veritabanından Verileri Çekme
-  const fetchFromDatabase = useCallback(async () => {
-    setIsDbLoading(true);
+  // Veritabanından Verileri Çekme (Arka plan sessiz veya ilk yükleme)
+  const fetchFromDatabase = useCallback(async (isBackground = false) => {
+    if (!isBackground) setIsDbLoading(true);
+    setIsSyncing(true);
 
     try {
       // 1. Supabase PostgreSQL Veritabanı
@@ -348,37 +351,48 @@ export const DentalProvider = ({ children }) => {
       if (remote) {
         const migratedRemote = migrateOrdersToCurrentPipeline(remote.orders || []);
         setData(prev => {
-          const merged = {
-            companies: mergeById(prev.companies, remote.companies),
-            doctors: mergeById(prev.doctors, remote.doctors),
-            patients: mergeById(prev.patients, remote.patients),
-            orders: mergeById(prev.orders, migratedRemote)
+          const next = {
+            companies: remote.companies || [],
+            doctors: remote.doctors || [],
+            patients: remote.patients || [],
+            orders: migratedRemote
           };
+
+          // Eğer veri aynıysa gereksiz state güncellemesi yapma (flicker ve gereksiz re-render engellenir)
+          if (
+            prev &&
+            prev.orders?.length === next.orders.length &&
+            prev.companies?.length === next.companies.length &&
+            prev.doctors?.length === next.doctors.length &&
+            prev.patients?.length === next.patients.length &&
+            JSON.stringify(prev) === JSON.stringify(next)
+          ) {
+            return prev;
+          }
+
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
           } catch (e) {}
-          return merged;
+          return next;
         });
 
-        // Teknisyenleri buluttan çek ve eşitle
-        try {
-          const remoteTechs = await fetchTechniciansFromSupabase();
-          if (Array.isArray(remoteTechs) && remoteTechs.length > 0) {
-            setTechniciansList(remoteTechs);
+        // Teknisyenleri buluttan gelenle eşitle
+        if (Array.isArray(remote.technicians) && remote.technicians.length > 0) {
+          setTechniciansList(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(remote.technicians)) return prev;
             try {
-              localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(remoteTechs));
+              localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(remote.technicians));
             } catch (e) {}
-          } else {
-            // Eğer bulutta henüz yoksa yereldeki mevcut listeyi buluta aktar
-            setTechniciansList(prev => {
-              saveTechniciansToSupabase(prev);
-              return prev;
-            });
-          }
-        } catch (err) {
-          console.warn('Teknisyen bulut eşitleme hatası:', err);
+            return remote.technicians;
+          });
         }
 
+        // Firma hesaplarını / kullanıcıları eşitle
+        if (Array.isArray(remote.users) && remote.users.length > 0 && typeof applyRemoteUsers === 'function') {
+          applyRemoteUsers(remote.users);
+        }
+
+        setLastSyncedAt(new Date());
         setDbStatus('connected');
         return;
       }
@@ -403,13 +417,38 @@ export const DentalProvider = ({ children }) => {
     } catch (e) {
       setDbStatus('connected');
     } finally {
-      setIsDbLoading(false);
+      if (!isBackground) setIsDbLoading(false);
+      setIsSyncing(false);
     }
-  }, [dbConfig]);
+  }, [dbConfig, applyRemoteUsers]);
 
-  // İlk açılışta veritabanından çek
+  // İlk açılışta ve canlı arka plan periyodunda sürekli eşitle (Tüm cihazlar anlık senkron)
   useEffect(() => {
-    fetchFromDatabase();
+    // 1. Sayfa ilk açıldığında anında çek
+    fetchFromDatabase(false);
+
+    // 2. CANLI SENKRONİZASYON: Sekme görünürken her 2.5 saniyede bir sessiz kontrol
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchFromDatabase(true);
+      }
+    }, 2500);
+
+    // 3. Kullanıcı pencereye döndüğünde beklemeden anında eşitle
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchFromDatabase(true);
+      }
+    };
+
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+    };
   }, [fetchFromDatabase]);
 
   // Veri değiştiğinde hem yerel belleğe yaz hem veritabanına kaydet
@@ -419,15 +458,6 @@ export const DentalProvider = ({ children }) => {
     } catch (e) {}
     persistToDatabase(data);
   }, [data, persistToDatabase]);
-
-  // Cihazlar arası veri tazeleme (Pencereye dönüldüğünde)
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchFromDatabase();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchFromDatabase]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -1329,6 +1359,9 @@ export const DentalProvider = ({ children }) => {
         saveDbConfig,
         dbStatus,
         isDbLoading,
+        isSyncing,
+        lastSyncedAt,
+        fetchFromDatabase,
         testAndSyncDb,
         clearAllData,
         exportData,

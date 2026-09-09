@@ -2532,6 +2532,60 @@ a {
   color: var(--text-muted);
 }
 
+/* Canlı Senkronizasyon Rozeti & Butonu */
+.sync-live-btn {
+  padding: 6px 10px !important;
+  font-size: 0.8rem !important;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sync-live-btn:hover {
+  background: var(--bg-surface-elevated) !important;
+  border-color: var(--dental-blue) !important;
+}
+
+.live-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseGreen 2s infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes pulseGreen {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.spin-animation {
+  animation: dentalSpin 0.8s linear infinite;
+}
+
+@keyframes dentalSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
 
 
 

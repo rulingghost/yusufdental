@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Search, Plus, Sun, Moon, Menu, X, Users, LogOut } from 'lucide-react';
+import { Search, Plus, Sun, Moon, Menu, X, Users, LogOut, RotateCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = ({ onToggleSidebar }) => {
@@ -12,7 +12,9 @@ export const Navbar = ({ onToggleSidebar }) => {
     setIsOrderModalOpen,
     setEditingOrder,
     setIsTeamModalOpen,
-    technicians
+    technicians,
+    fetchFromDatabase,
+    isSyncing
   } = useDental();
   const { isAdmin, isOperator, isCompany, logout, currentUser } = useAuth();
 
@@ -106,6 +108,18 @@ export const Navbar = ({ onToggleSidebar }) => {
         >
           <Plus size={18} strokeWidth={2.5} />
           <span className="navbar-btn-text">{isCompany ? 'İş Emri Ver' : (isOperator ? 'İş Emri Başlat' : 'Yeni İş Emri')}</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn-dental btn-dental-secondary sync-live-btn"
+          onClick={() => fetchFromDatabase && fetchFromDatabase(false)}
+          title="Tüm cihazlarla anlık canlı bulut eşitlemesi aktif. Tıklayarak hemen yenileyebilirsiniz."
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <span className="live-pulse-dot" />
+          <RotateCw size={14} className={isSyncing ? 'spin-animation' : ''} />
+          <span className="desktop-only" style={{ fontSize: '0.8rem', fontWeight: 600 }}>Canlı</span>
         </button>
 
         <button

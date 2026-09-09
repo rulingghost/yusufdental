@@ -142,7 +142,25 @@ export async function fetchAllFromSupabase() {
       };
     });
 
-    return { companies, doctors, patients, orders };
+    let technicians = null;
+    const sysTech = (compData || []).find(c => c.id === 'sys-dentallab-technicians');
+    if (sysTech?.address) {
+      try {
+        const parsed = JSON.parse(sysTech.address);
+        if (Array.isArray(parsed) && parsed.length > 0) technicians = parsed;
+      } catch (e) {}
+    }
+
+    let users = null;
+    const sysUsers = (compData || []).find(c => c.id === 'sys-dentallab-users');
+    if (sysUsers?.address) {
+      try {
+        const parsed = JSON.parse(sysUsers.address);
+        if (Array.isArray(parsed) && parsed.length > 0) users = parsed;
+      } catch (e) {}
+    }
+
+    return { companies, doctors, patients, orders, technicians, users };
   } catch (error) {
     console.error('Supabase fetch error:', error);
     return null;
