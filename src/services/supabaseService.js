@@ -572,4 +572,50 @@ export async function saveUsersToSupabase(usersList) {
   }
 }
 
+// 16. TEKNİSYEN VE EKİP BULUT SENKRONİZASYONU (HER CİHAZDA KALICI EKİP LİSTESİ)
+export const SYS_TECHS_COMPANY_ID = 'sys-dentallab-technicians';
+
+export async function fetchTechniciansFromSupabase() {
+  try {
+    const headers = getReadHeaders();
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/companies?id=eq.${SYS_TECHS_COMPANY_ID}&select=address`, { headers });
+    if (!res.ok) return null;
+    const rows = await res.json().catch(() => []);
+    if (Array.isArray(rows) && rows.length > 0 && rows[0]?.address) {
+      const parsed = JSON.parse(rows[0].address);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    return null;
+  } catch (error) {
+    console.warn('fetchTechniciansFromSupabase error:', error);
+    return null;
+  }
+}
+
+export async function saveTechniciansToSupabase(techsList) {
+  try {
+    if (!Array.isArray(techsList)) return false;
+    const headers = getHeaders();
+    const payload = {
+      id: SYS_TECHS_COMPANY_ID,
+      name: 'SYSTEM_TECHNICIANS_STORAGE',
+      contact_person: 'SYSTEM',
+      phone: '',
+      email: 'system@dentallab.internal',
+      address: JSON.stringify(techsList),
+      balance: 0
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/companies`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('saveTechniciansToSupabase error:', error);
+    return false;
+  }
+}
+
+
 

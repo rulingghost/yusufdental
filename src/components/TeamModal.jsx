@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDental } from '../context/DentalContext';
-import { Users, Plus, Trash2, X, Briefcase, Award, CheckCircle2 } from 'lucide-react';
+import { Users, Plus, Trash2, X, Briefcase, Award, CheckCircle2, Edit2, RotateCcw } from 'lucide-react';
 
 const COMMON_ROLES = [
   '🎨 Seramist / Porselen',
@@ -17,12 +17,14 @@ export const TeamModal = () => {
     setIsTeamModalOpen,
     techniciansList,
     addTechnician,
+    updateTechnician,
     removeTechnician,
     orders
   } = useDental();
 
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [editingTech, setEditingTech] = useState(null);
 
   if (!isTeamModalOpen) return null;
 
@@ -35,15 +37,40 @@ export const TeamModal = () => {
     }).length;
   };
 
-  const handleAdd = (e) => {
+  const handleStartEdit = (tech) => {
+    setEditingTech(tech);
+    setName(tech.name || '');
+    setRole(tech.role || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTech(null);
+    setName('');
+    setRole('');
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addTechnician(name.trim(), role.trim() || 'Dental Teknisyen');
+
+    if (editingTech) {
+      updateTechnician(editingTech.id, {
+        name: name.trim(),
+        role: role.trim() || 'Dental Teknisyen'
+      });
+      setEditingTech(null);
+    } else {
+      addTechnician(name.trim(), role.trim() || 'Dental Teknisyen');
+    }
+
     setName('');
     setRole('');
   };
 
   const handleRemove = (tech) => {
+    if (editingTech?.id === tech.id) {
+      handleCancelEdit();
+    }
     const workload = getWorkload(tech.name);
     const msg = workload > 0
       ? `"${tech.name}" şu anda ${workload} aktif işte sorumlu olarak atanmış durumda. Yine de ekipten çıkarılsın mı?`
@@ -97,20 +124,32 @@ export const TeamModal = () => {
         </div>
 
         <div className="modal-dialog-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {/* Yeni Teknisyen Ekleme Formu */}
+          {/* Teknisyen Ekleme / Düzenleme Formu */}
           <form
-            onSubmit={handleAdd}
+            onSubmit={handleSubmit}
             style={{
               padding: 16,
-              background: 'var(--bg-surface-elevated)',
+              background: editingTech ? 'rgba(2, 132, 199, 0.05)' : 'var(--bg-surface-elevated)',
               borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-subtle)',
+              border: editingTech ? '1px solid var(--dental-blue)' : '1px solid var(--border-subtle)',
               marginBottom: 20
             }}
           >
-            <div style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--dental-blue)' }}>
-              <Plus size={16} />
-              <span>Yeni Teknisyen / Personel Ekle</span>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--dental-blue)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {editingTech ? <Edit2 size={16} /> : <Plus size={16} />}
+                <span>{editingTech ? `Teknisyeni Düzenle: ${editingTech.name}` : 'Yeni Teknisyen / Personel Ekle'}</span>
+              </div>
+              {editingTech && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <RotateCcw size={12} />
+                  <span>Vazgeç</span>
+                </button>
+              )}
             </div>
 
             <div className="form-grid-2" style={{ marginBottom: 10 }}>
@@ -159,14 +198,24 @@ export const TeamModal = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              {editingTech && (
+                <button
+                  type="button"
+                  className="btn-dental btn-dental-secondary"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                  onClick={handleCancelEdit}
+                >
+                  Vazgeç
+                </button>
+              )}
               <button
                 type="submit"
                 className="btn-dental btn-dental-primary"
                 style={{ padding: '8px 16px', fontSize: '0.85rem' }}
               >
-                <Plus size={15} />
-                <span>Teknisyeni Kaydet</span>
+                {editingTech ? <CheckCircle2 size={15} /> : <Plus size={15} />}
+                <span>{editingTech ? 'Değişiklikleri Kaydet' : 'Teknisyeni Kaydet'}</span>
               </button>
             </div>
           </form>
@@ -178,13 +227,14 @@ export const TeamModal = () => {
                 Kayıtlı Teknisyenler ({techniciansList.length})
               </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                İş emirlerinde sorumlu seçilebilir
+                Düzenleyin veya iş emirlerinde sorumlu atayın
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {techniciansList.map((tech, idx) => {
                 const workload = getWorkload(tech.name);
+                const isCurrentEdit = editingTech?.id === tech.id;
                 const initials = tech.name
                   .split(' ')
                   .map(p => p[0])
@@ -201,8 +251,8 @@ export const TeamModal = () => {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '10px 14px',
-                      background: 'var(--bg-surface)',
-                      border: '1px solid var(--border-subtle)',
+                      background: isCurrentEdit ? 'rgba(2, 132, 199, 0.08)' : 'var(--bg-surface)',
+                      border: isCurrentEdit ? '1.5px solid var(--dental-blue)' : '1px solid var(--border-subtle)',
                       borderRadius: 'var(--radius-sm)',
                       transition: 'var(--transition)'
                     }}
@@ -237,7 +287,7 @@ export const TeamModal = () => {
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span
                         style={{
                           padding: '3px 8px',
@@ -252,6 +302,16 @@ export const TeamModal = () => {
                       >
                         {workload > 0 ? `${workload} Aktif İş` : 'Müsait'}
                       </span>
+
+                      <button
+                        type="button"
+                        className="btn-dental btn-dental-secondary btn-dental-sm"
+                        style={{ padding: '6px 8px' }}
+                        onClick={() => handleStartEdit(tech)}
+                        title="Teknisyeni Düzenle"
+                      >
+                        <Edit2 size={14} />
+                      </button>
 
                       <button
                         type="button"

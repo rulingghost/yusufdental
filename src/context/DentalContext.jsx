@@ -13,7 +13,9 @@ import {
   clearAllFromSupabase,
   uploadStlToSupabase,
   deleteStlFromSupabase,
-  linkFilesToOrderInSupabase
+  linkFilesToOrderInSupabase,
+  fetchTechniciansFromSupabase,
+  saveTechniciansToSupabase
 } from '../services/supabaseService';
 
 const DentalContext = createContext(null);
@@ -357,6 +359,26 @@ export const DentalProvider = ({ children }) => {
           } catch (e) {}
           return merged;
         });
+
+        // Teknisyenleri buluttan çek ve eşitle
+        try {
+          const remoteTechs = await fetchTechniciansFromSupabase();
+          if (Array.isArray(remoteTechs) && remoteTechs.length > 0) {
+            setTechniciansList(remoteTechs);
+            try {
+              localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(remoteTechs));
+            } catch (e) {}
+          } else {
+            // Eğer bulutta henüz yoksa yereldeki mevcut listeyi buluta aktar
+            setTechniciansList(prev => {
+              saveTechniciansToSupabase(prev);
+              return prev;
+            });
+          }
+        } catch (err) {
+          console.warn('Teknisyen bulut eşitleme hatası:', err);
+        }
+
         setDbStatus('connected');
         return;
       }
@@ -1010,33 +1032,99 @@ export const DentalProvider = ({ children }) => {
     showToast('İş emri silindi.', 'warning');
   };
 
-  // Teknisyen Ekleme / Çıkarma / Düzenleme
+  // Teknisyen Ekleme / Çıkarma / Düzenleme (Bulut & Yerel Kalıcı Eşitlemeli)
   const addTechnician = (name, role = 'Dental Teknisyen') => {
-    if (denyProductionChange()) return;
-    if (!name || !name.trim()) return;
+    if (denyProductionChange()) return null;
+    if (!name || !name.trim()) return null;
     const trimmed = name.trim();
     if (techniciansList.some(t => t.name.toLowerCase() === trimmed.toLowerCase())) {
       showToast(`"${trimmed}" zaten ekipte kayıtlı.`, 'warning');
-      return;
+      return null;
     }
     const newTech = {
       id: 'tech-' + Date.now(),
       name: trimmed,
       role: role.trim() || 'Dental Teknisyen'
     };
-    setTechniciansList(prev => [...prev, newTech]);
+    let nextList = [];
+    setTechniciansList(prev => {
+      nextList = [...prev, newTech];
+      try {
+        localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
+      } catch (e) {}
+      return nextList;
+    });
+    saveTechniciansToSupabase(nextList);
     showToast(`Teknisyen "${trimmed}" başarıyla eklendi!`, 'success');
     return newTech;
   };
 
   const removeTechnician = (techIdOrName) => {
-    setTechniciansList(prev => prev.filter(t => t.id !== techIdOrName && t.name !== techIdOrName));
+    if (denyProductionChange()) return;
+    let nextList = [];
+    setTechniciansList(prev => {
+      nextList = prev.filter(t => t.id !== techIdOrName && t.name !== techIdOrName);
+      try {
+        localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
+      } catch (e) {}
+      return nextList;
+    });
+    saveTechniciansToSupabase(nextList);
     showToast('Teknisyen ekipten çıkarıldı.', 'info');
   };
 
   const updateTechnician = (techId, updatedData) => {
-    setTechniciansList(prev => prev.map(t => t.id === techId ? { ...t, ...updatedData } : t));
-    showToast('Teknisyen güncellendi.', 'success');
+    if (denyProductionChange()) return null;
+    let oldName = '';
+    let newName = (updatedData.name || '').trim();
+    let nextList = [];
+    let updatedObj = null;
+
+    setTechniciansList(prev => {
+      nextList = prev.map(t => {
+        if (t.id === techId || t.name === techId) {
+          oldName = t.name;
+          updatedObj = {
+            ...t,
+            ...updatedData,
+            name: newName || t.name,
+            role: updatedData.role !== undefined ? updatedData.role.trim() : t.role
+          };
+          return updatedObj;
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(nextList));
+      } catch (e) {}
+      return nextList;
+    });
+
+    saveTechniciansToSupabase(nextList);
+
+    // Eğer isim güncellendiyse mevcut iş emirlerinin aşamalarındaki ismi de güncelle
+    if (oldName && newName && oldName !== newName) {
+      setData(prev => {
+        let changed = false;
+        const orders = (prev.orders || []).map(o => {
+          let stepsChanged = false;
+          const steps = (o.steps || []).map(s => {
+            if (s.technician === oldName) {
+              stepsChanged = true;
+              changed = true;
+              return { ...s, technician: newName };
+            }
+            return s;
+          });
+          return stepsChanged ? { ...o, steps } : o;
+        });
+        if (!changed) return prev;
+        return { ...prev, orders };
+      });
+    }
+
+    showToast('Teknisyen güncellendi ve kalıcı kaydedildi ✓', 'success');
+    return updatedObj;
   };
 
   // Belirli bir iş emrinin aşamasına sorumlu teknisyen atama
