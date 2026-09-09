@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth, ROLES } from '../context/AuthContext';
 import { useDental } from '../context/DentalContext';
-import { Plus, Trash2, KeyRound, Shield, User, Building2, X } from 'lucide-react';
+import { Plus, Trash2, KeyRound, Shield, User, Building2, X, Lock } from 'lucide-react';
 
 export const UsersView = () => {
   const { users, saveUser, deleteUser, currentUser } = useAuth();
@@ -24,6 +24,10 @@ export const UsersView = () => {
   };
 
   const openEdit = (user) => {
+    if (user.role === ROLES.admin) {
+      showToast('Yönetici bilgileri sabittir, değiştirilemez.', 'warning');
+      return;
+    }
     setEditingId(user.id);
     setName(user.name || '');
     setUsername(user.username || '');
@@ -105,15 +109,24 @@ export const UsersView = () => {
                   </td>
                   <td>{company?.name || '-'}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button type="button" className="btn-dental btn-dental-secondary btn-dental-sm" onClick={() => openEdit(user)}>
-                        <KeyRound size={13} />
-                        <span>Düzenle</span>
-                      </button>
-                      {user.id !== currentUser?.id && (
-                        <button type="button" className="btn-dental btn-dental-danger btn-dental-sm" onClick={() => handleDelete(user)}>
-                          <Trash2 size={13} />
-                        </button>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      {user.role === ROLES.admin ? (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--bg-app)', border: '1px solid var(--border-subtle)', borderRadius: 6, fontWeight: 600 }}>
+                          <Lock size={12} color="var(--dental-blue)" />
+                          <span>Sabit Yönetici</span>
+                        </span>
+                      ) : (
+                        <>
+                          <button type="button" className="btn-dental btn-dental-secondary btn-dental-sm" onClick={() => openEdit(user)}>
+                            <KeyRound size={13} />
+                            <span>Düzenle</span>
+                          </button>
+                          {user.id !== currentUser?.id && (
+                            <button type="button" className="btn-dental btn-dental-danger btn-dental-sm" onClick={() => handleDelete(user)} title="Kullanıcıyı Sil">
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>

@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { sendEmailOtp, verifyEmailOtp, isGmailAddress, normalizeEmail, maskEmail } from '../services/emailOtpService';
 
 const AuthContext = createContext(null);
 
 export const USERS_STORAGE_KEY = 'dentallab_users_v1';
 export const SESSION_STORAGE_KEY = 'dentallab_session_v1';
+
+export const ADMIN_CREDENTIALS = {
+  id: 'user-admin',
+  username: 'yusuf',
+  password: 'yusuf2026',
+  name: 'Yusuf (Yönetici)'
+};
 
 export const ROLES = {
   admin: 'admin',
@@ -27,10 +33,10 @@ function makeId(prefix) {
 function seedUsers() {
   return [
     {
-      id: 'user-admin',
-      username: 'admin',
-      passwordHash: hashPassword('admin123'),
-      name: 'Yönetici',
+      id: ADMIN_CREDENTIALS.id,
+      username: ADMIN_CREDENTIALS.username,
+      passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+      name: ADMIN_CREDENTIALS.name,
       role: ROLES.admin,
       companyId: null,
       createdAt: new Date().toISOString()
@@ -48,18 +54,56 @@ function seedUsers() {
 }
 
 function loadUsers() {
+  let list = [];
   try {
     const saved = localStorage.getItem(USERS_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        list = parsed;
+      }
     }
   } catch (e) {}
-  const seeded = seedUsers();
+
+  if (list.length === 0) {
+    list = seedUsers();
+  }
+
+  // Admin kullanıcısını her zaman sabit 'yusuf' / 'yusuf2026' olarak zorla ve garantiye al
+  let hasAdmin = false;
+  list = list.map(u => {
+    if (u.role === ROLES.admin || u.id === ADMIN_CREDENTIALS.id || u.username === 'admin' || u.username === ADMIN_CREDENTIALS.username) {
+      hasAdmin = true;
+      return {
+        ...u,
+        id: ADMIN_CREDENTIALS.id,
+        username: ADMIN_CREDENTIALS.username,
+        passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+        name: ADMIN_CREDENTIALS.name,
+        role: ROLES.admin,
+        companyId: null
+      };
+    }
+    return u;
+  });
+
+  if (!hasAdmin) {
+    list.unshift({
+      id: ADMIN_CREDENTIALS.id,
+      username: ADMIN_CREDENTIALS.username,
+      passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+      name: ADMIN_CREDENTIALS.name,
+      role: ROLES.admin,
+      companyId: null,
+      createdAt: new Date().toISOString()
+    });
+  }
+
   try {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(seeded));
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(list));
   } catch (e) {}
-  return seeded;
+
+  return list;
 }
 
 export const AuthProvider = ({ children }) => {
@@ -90,8 +134,25 @@ export const AuthProvider = ({ children }) => {
 
   const login = (username, password) => {
     const uname = (username || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    // Yönetici doğrudan sabit kimlik ile de kontrol edilebilir
+    if (uname === ADMIN_CREDENTIALS.username.toLowerCase() && cleanPass === ADMIN_CREDENTIALS.password) {
+      const adminObj = users.find(u => u.role === ROLES.admin) || {
+        id: ADMIN_CREDENTIALS.id,
+        username: ADMIN_CREDENTIALS.username,
+        passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+        name: ADMIN_CREDENTIALS.name,
+        role: ROLES.admin,
+        companyId: null
+      };
+      setCurrentUser(adminObj);
+      persistSession(adminObj);
+      return { ok: true, user: adminObj };
+    }
+
     const user = users.find(u => (u.username || '').toLowerCase() === uname);
-    if (!user || user.passwordHash !== hashPassword(password)) {
+    if (!user || user.passwordHash !== hashPassword(cleanPass)) {
       return { ok: false, error: 'Kullanıcı adı veya şifre hatalı.' };
     }
     setCurrentUser(user);
@@ -107,6 +168,15 @@ export const AuthProvider = ({ children }) => {
   const saveUser = (payload) => {
     const username = (payload.username || '').trim().toLowerCase();
     if (!username) return { ok: false, error: 'Kullanıcı adı gerekli.' };
+
+    // Admin kullanıcı adı ve şifresinin değiştirilmesini kesinlikle engelle
+    if (payload.id === ADMIN_CREDENTIALS.id || payload.role === ROLES.admin) {
+      return { ok: false, error: 'Yönetici kullanıcı adı ve şifresi sabittir, değiştirilemez.' };
+    }
+
+    if (username === ADMIN_CREDENTIALS.username.toLowerCase()) {
+      return { ok: false, error: `"${ADMIN_CREDENTIALS.username}" kullanıcı adı yöneticiye aittir.` };
+    }
 
     const duplicate = users.find(u =>
       (u.username || '').toLowerCase() === username && u.id !== payload.id
@@ -151,10 +221,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deleteUser = (id) => {
+    if (id === ADMIN_CREDENTIALS.id) {
+      return { ok: false, error: 'Yönetici hesabı silinemez.' };
+    }
     const target = users.find(u => u.id === id);
     if (!target) return { ok: false, error: 'Kullanıcı bulunamadı.' };
-    if (target.role === ROLES.admin && users.filter(u => u.role === ROLES.admin).length <= 1) {
-      return { ok: false, error: 'Son yönetici silinemez.' };
+    if (target.role === ROLES.admin) {
+      return { ok: false, error: 'Yönetici hesabı silinemez.' };
     }
     if (currentUser?.id === id) {
       return { ok: false, error: 'Oturum açmış kullanıcı silinemez.' };
@@ -180,91 +253,20 @@ export const AuthProvider = ({ children }) => {
     setUsers(prev => prev.filter(u => u.companyId !== companyId));
   };
 
-  const patchUser = (id, fields) => {
-    setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...fields } : u)));
-    setCurrentUser(prev => (prev && prev.id === id ? { ...prev, ...fields } : prev));
-  };
-
-  const getAdminUser = () => users.find(u => u.role === ROLES.admin) || null;
-
-  const setupAdminAccount = ({ email, password }) => {
-    const admin = getAdminUser();
-    if (!admin) return { ok: false, error: 'Yönetici hesabı bulunamadı.' };
-    if (admin.recoveryEmail) {
-      return { ok: false, error: 'Gmail zaten kayıtlı. Giriş için şifrenizi yazın.' };
-    }
-    const target = normalizeEmail(email);
-    if (!isGmailAddress(target)) {
-      return { ok: false, error: 'Yalnızca Gmail adresi kullanılabilir.' };
-    }
-    if (!password || String(password).length < 6) {
-      return { ok: false, error: 'Şifre en az 6 karakter olmalı.' };
-    }
-    const fields = {
-      recoveryEmail: target,
-      recoveryEmailVerified: true,
-      recoveryEmailVerifiedAt: new Date().toISOString(),
-      passwordHash: hashPassword(password)
-    };
-    patchUser(admin.id, fields);
-    const refreshed = { ...admin, ...fields };
-    setCurrentUser(refreshed);
-    persistSession(refreshed);
-    return { ok: true };
-  };
-
-  const startAdminPasswordReset = async () => {
-    const admin = getAdminUser();
-    if (!admin) return { ok: false, error: 'Yönetici hesabı bulunamadı.' };
-    if (!admin.recoveryEmail) {
-      return { ok: false, error: 'Kayıtlı Gmail yok. Girişte admin yazıp Gmail ekleyin.' };
-    }
-    const sent = await sendEmailOtp(admin.recoveryEmail);
-    if (!sent.ok) return sent;
-    return { ok: true, maskedEmail: maskEmail(admin.recoveryEmail), message: sent.message };
-  };
-
-  const finishAdminPasswordReset = async ({ code, newPassword }) => {
-    const admin = getAdminUser();
-    if (!admin) return { ok: false, error: 'Yönetici hesabı bulunamadı.' };
-    if (!admin.recoveryEmail) {
-      return { ok: false, error: 'Kayıtlı Gmail yok.' };
-    }
-    if (!newPassword || String(newPassword).length < 6) {
-      return { ok: false, error: 'Yeni şifre en az 6 karakter olmalı.' };
-    }
-    const verified = await verifyEmailOtp(admin.recoveryEmail, code);
-    if (!verified.ok) return verified;
-    const fields = { passwordHash: hashPassword(newPassword) };
-    patchUser(admin.id, fields);
-    const refreshed = { ...admin, ...fields };
-    setCurrentUser(refreshed);
-    persistSession(refreshed);
-    return { ok: true };
-  };
-
   const clearAdminRecovery = () => {
-    setUsers(prev => prev.map(u => {
-      if (u.role !== ROLES.admin) return u;
-      return {
-        ...u,
-        recoveryEmail: null,
-        recoveryEmailVerified: false,
-        recoveryEmailVerifiedAt: null
-      };
-    }));
-    setCurrentUser(prev => {
-      if (!prev || prev.role !== ROLES.admin) return prev;
-      return {
-        ...prev,
-        recoveryEmail: null,
-        recoveryEmailVerified: false,
-        recoveryEmailVerifiedAt: null
-      };
-    });
+    // Admin her zaman 'yusuf' / 'yusuf2026'
     try {
       sessionStorage.removeItem('dentallab_email_otp_v1');
     } catch (e) {}
+  };
+
+  const getAdminUser = () => users.find(u => u.role === ROLES.admin) || {
+    id: ADMIN_CREDENTIALS.id,
+    username: ADMIN_CREDENTIALS.username,
+    passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+    name: ADMIN_CREDENTIALS.name,
+    role: ROLES.admin,
+    companyId: null
   };
 
   const isAdmin = currentUser?.role === ROLES.admin;
@@ -281,15 +283,13 @@ export const AuthProvider = ({ children }) => {
         isOperator,
         isCompany,
         adminAccount: getAdminUser(),
+        adminCredentials: ADMIN_CREDENTIALS,
         login,
         logout,
         saveUser,
         deleteUser,
         upsertCompanyUser,
         deleteUsersByCompanyId,
-        setupAdminAccount,
-        startAdminPasswordReset,
-        finishAdminPasswordReset,
         clearAdminRecovery
       }}
     >
