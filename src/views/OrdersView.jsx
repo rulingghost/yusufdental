@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDental, isOrderFromCompletedImplant } from '../context/DentalContext';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Printer, Trash2, RotateCcw, CheckCircle2, Factory, ChevronDown, ChevronUp, ExternalLink, Pencil, ClipboardList } from 'lucide-react';
+import { Plus, Printer, Trash2, RotateCcw, CheckCircle2, Factory, ChevronDown, ChevronUp, ExternalLink, Pencil, ClipboardList, Clock } from 'lucide-react';
 import { PrintSlip } from '../components/PrintSlip';
 import { StepDateModal } from '../components/StepDateModal';
 
 export const OrdersView = () => {
   const navigate = useNavigate();
-  const { orders, companies, doctors, patients, materials, deleteOrder, restartOrder, searchQuery, setIsOrderModalOpen, setEditingOrder, approveOrder } = useDental();
+  const { orders, companies, doctors, patients, materials, deleteOrder, restartOrder, searchQuery, setIsOrderModalOpen, setEditingOrder, approveOrder, rejectOrder } = useDental();
 
-  // 'active' (Üretim aşamasındakiler) vs 'completed' (Tamamlananlar bölümü)
+  // 'all' | 'pending' | 'active' | 'completed'
   const { isAdmin, isOperator, isCompany } = useAuth();
   const [tabMode, setTabMode] = useState(isCompany ? 'all' : 'active');
   const [filterMaterial, setFilterMaterial] = useState('');
@@ -22,11 +22,13 @@ export const OrdersView = () => {
     setExpandedOrderId(prev => prev === id ? null : id);
   };
 
+  const pendingOrdersCount = orders.filter(o => o.status === 'pending_approval').length;
   const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'rejected').length;
   const completedOrdersCount = orders.filter(o => o.status === 'completed').length;
 
   let filtered = orders.filter(o => {
     if (tabMode === 'all') return true;
+    if (tabMode === 'pending') return o.status === 'pending_approval';
     if (tabMode === 'active') return o.status !== 'completed';
     return o.status === 'completed';
   });
@@ -72,34 +74,47 @@ export const OrdersView = () => {
           <h2 className="page-title">{isCompany ? 'İş Emirlerim' : (isOperator ? 'İş Emirlerim' : 'İş Emirleri & Sipariş Takibi')}</h2>
           <p className="page-subtitle">
             {isCompany
-              ? 'Kliniğinize ait tüm iş emirleri: üretimde, onay bekleyen ve tamamlananlar. Yalnızca kendi işlerinizi görürsünüz.'
+              ? 'Kliniğinize ait tüm iş emirleri. Yeni iş emri oluşturabilirsiniz; oluşturduğunuz işler yönetici onayına düşer ve onaylandıktan sonra üretime geçer.'
               : (isOperator
               ? 'Yeni iş emri verebilirsiniz. Onaylanana kadar kendi emrinizi düzenleyebilirsiniz; onaydan sonra yalnızca durumunu görürsünüz.'
+              : (tabMode === 'pending'
+              ? 'Yönetici onayı bekleyen iş emirleri listeleniyor'
               : (tabMode === 'active'
               ? 'Yalnızca aktif üretim aşamasındaki işlemler listeleniyor'
               : (tabMode === 'all'
               ? 'Tüm iş emirleri listeleniyor'
-              : 'Tamamlanan protezlerin ayrı arşivi (Buradan istediğiniz işi üretime geri çevirebilirsiniz)')))}
+              : 'Tamamlanan protezlerin ayrı arşivi (Buradan istediğiniz işi üretime geri çevirebilirsiniz)'))))}
           </p>
         </div>
 
         <div className="page-header-actions">
           <div className="segmented-tabs">
-            {isCompany && (
-              <button
-                type="button"
-                className={`btn-dental btn-dental-sm ${tabMode === 'all' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
-                style={{ border: 'none' }}
-                onClick={() => setTabMode('all')}
-              >
-                <ClipboardList size={15} />
-                <span>Tümü ({orders.length})</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className={`btn-dental btn-dental-sm ${tabMode === 'all' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
+              style={{ border: 'none' }}
+              onClick={() => setTabMode('all')}
+            >
+              <ClipboardList size={15} />
+              <span>Tümü ({orders.length})</span>
+            </button>
+            <button
+              type="button"
+              className={`btn-dental btn-dental-sm ${tabMode === 'pending' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
+              style={{
+                border: 'none',
+                marginLeft: 4,
+                color: tabMode === 'pending' ? undefined : (pendingOrdersCount > 0 ? 'var(--status-revision)' : undefined)
+              }}
+              onClick={() => setTabMode('pending')}
+            >
+              <Clock size={15} />
+              <span>Onay Bekleyenler ({pendingOrdersCount})</span>
+            </button>
             <button
               type="button"
               className={`btn-dental btn-dental-sm ${tabMode === 'active' ? 'btn-dental-primary' : 'btn-dental-secondary'}`}
-              style={{ border: 'none', marginLeft: isCompany ? 4 : 0 }}
+              style={{ border: 'none', marginLeft: 4 }}
               onClick={() => setTabMode('active')}
             >
               <Factory size={15} />
@@ -116,7 +131,6 @@ export const OrdersView = () => {
             </button>
           </div>
 
-          {!isCompany && (
           <button
             type="button"
             className="btn-dental btn-dental-primary desktop-only"
@@ -126,9 +140,8 @@ export const OrdersView = () => {
             }}
           >
             <Plus size={18} />
-            <span>Yeni İş Emri Başlat</span>
+            <span>{isCompany ? 'Yeni İş Emri Ver' : (isOperator ? 'İş Emri Başlat' : 'Yeni İş Emri Başlat')}</span>
           </button>
-          )}
         </div>
       </div>
 
@@ -255,14 +268,15 @@ export const OrdersView = () => {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
-                            {o.status === 'pending_approval' && isOperator && (
+                            {o.status === 'pending_approval' && (isOperator || isCompany) && (
                               <button
                                 type="button"
-                                className="btn-dental btn-dental-primary btn-dental-sm"
+                                className="btn-dental btn-dental-secondary btn-dental-sm"
                                 onClick={() => {
                                   setEditingOrder(o);
                                   setIsOrderModalOpen(true);
                                 }}
+                                title="Onay öncesi düzenle"
                               >
                                 <Pencil size={14} />
                                 <span>Düzenle</span>
@@ -283,13 +297,29 @@ export const OrdersView = () => {
                             )}
 
                             {o.status === 'pending_approval' && isAdmin && (
-                              <button
-                                type="button"
-                                className="btn-dental btn-dental-primary btn-dental-sm"
-                                onClick={() => setApproveTargetId(o.id)}
-                              >
-                                Onayla
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn-dental btn-dental-primary btn-dental-sm"
+                                  onClick={() => setApproveTargetId(o.id)}
+                                  title="İş emrini onayla ve üretime başlat"
+                                >
+                                  ✓ Onayla
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-dental btn-dental-danger btn-dental-sm"
+                                  style={{ padding: '6px 8px', fontSize: '0.74rem' }}
+                                  onClick={() => {
+                                    if (window.confirm(`${o.id} numaralı iş emri reddedilsin mi?`)) {
+                                      rejectOrder(o.id);
+                                    }
+                                  }}
+                                  title="İş emrini reddet"
+                                >
+                                  Reddet
+                                </button>
+                              </>
                             )}
 
                             {isCompany && (
@@ -401,7 +431,9 @@ export const OrdersView = () => {
             <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
               {tabMode === 'all'
                 ? 'Bu kliniğe ait iş emri yok.'
-                : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.')}
+                : (tabMode === 'pending'
+                  ? 'Onay bekleyen iş emri bulunmuyor.'
+                  : (tabMode === 'active' ? 'Üretim aşamasında bekleyen iş yok.' : 'Henüz tamamlanmış iş yok.'))}
             </div>
           ) : (
             filtered.map(o => {
@@ -455,14 +487,14 @@ export const OrdersView = () => {
                     <div style={{ height: '100%', width: `${pct}%`, background: 'var(--dental-blue)' }} />
                   </div>
 
-                  {/* Tıklanınca Açılan Mobil Detay Çekmecesi */}
+                  {/* Tıklanınca Açılan Mobil Detay ve Eylem Butonları */}
                   {isExpanded && (
-                    <div className="job-card-details-drawer" onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                        <span className="badge-pill" style={{ background: 'var(--bg-surface-elevated)', fontFamily: 'JetBrains Mono', fontSize: '0.72rem' }}>
-                          🦷 {(o.teeth || []).join(', ') || '-'}
+                    <div className="mobile-order-details" onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                        <span className="badge-pill badge-outline" style={{ fontSize: '0.72rem' }}>
+                          🦷 FDI: {(o.teeth || []).join(', ') || 'Tüm Çene'}
                         </span>
-                        <span className="badge-pill" style={{ background: 'var(--status-completed-bg)', color: 'var(--status-completed)', fontWeight: 700, fontSize: '0.72rem' }}>
+                        <span className="badge-pill badge-outline" style={{ fontSize: '0.72rem' }}>
                           🎨 {o.shade}
                         </span>
                         <span className={`badge-pill ${mat.badgeClass}`} style={{ fontSize: '0.72rem' }}>
@@ -487,10 +519,10 @@ export const OrdersView = () => {
                       </div>
 
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
-                        {o.status === 'pending_approval' && isOperator && (
+                        {o.status === 'pending_approval' && (isOperator || isCompany) && (
                           <button
                             type="button"
-                            className="btn-dental btn-dental-primary btn-dental-sm"
+                            className="btn-dental btn-dental-secondary btn-dental-sm"
                             style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
                             onClick={() => {
                               setEditingOrder(o);
@@ -503,14 +535,28 @@ export const OrdersView = () => {
                         )}
 
                         {o.status === 'pending_approval' && isAdmin && (
-                          <button
-                            type="button"
-                            className="btn-dental btn-dental-primary btn-dental-sm"
-                            style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
-                            onClick={() => setApproveTargetId(o.id)}
-                          >
-                            Onayla
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              className="btn-dental btn-dental-primary btn-dental-sm"
+                              style={{ flex: 1, fontSize: '0.75rem', padding: '6px 10px' }}
+                              onClick={() => setApproveTargetId(o.id)}
+                            >
+                              ✓ Onayla
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-dental btn-dental-danger btn-dental-sm"
+                              style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+                              onClick={() => {
+                                if (window.confirm(`${o.id} numaralı iş emri reddedilsin mi?`)) {
+                                  rejectOrder(o.id);
+                                }
+                              }}
+                            >
+                              Reddet
+                            </button>
+                          </>
                         )}
 
                         {o.status === 'completed' && isAdmin ? (

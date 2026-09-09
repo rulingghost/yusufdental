@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { fetchUsersFromSupabase, saveUsersToSupabase } from '../services/supabaseService';
 
 const AuthContext = createContext(null);
 
@@ -28,6 +29,47 @@ export function hashPassword(plain) {
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+}
+
+export function mergeUsers(localList = [], remoteList = []) {
+  const map = new Map();
+  (localList || []).forEach(u => {
+    if (u?.username) map.set((u.username || '').toLowerCase(), u);
+  });
+  (remoteList || []).forEach(u => {
+    if (u?.username) {
+      const key = (u.username || '').toLowerCase();
+      const local = map.get(key);
+      map.set(key, local ? { ...local, ...u } : u);
+    }
+  });
+  let list = Array.from(map.values());
+  list = list.map(u => {
+    if (u.role === ROLES.admin || u.id === ADMIN_CREDENTIALS.id || (u.username || '').toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase()) {
+      return {
+        ...u,
+        id: ADMIN_CREDENTIALS.id,
+        username: ADMIN_CREDENTIALS.username,
+        passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+        name: ADMIN_CREDENTIALS.name,
+        role: ROLES.admin,
+        companyId: null
+      };
+    }
+    return u;
+  });
+  if (!list.some(u => u.role === ROLES.admin)) {
+    list.unshift({
+      id: ADMIN_CREDENTIALS.id,
+      username: ADMIN_CREDENTIALS.username,
+      passwordHash: hashPassword(ADMIN_CREDENTIALS.password),
+      name: ADMIN_CREDENTIALS.name,
+      role: ROLES.admin,
+      companyId: null,
+      createdAt: new Date().toISOString()
+    });
+  }
+  return list;
 }
 
 function seedUsers() {
@@ -119,6 +161,39 @@ export const AuthProvider = ({ children }) => {
     }
   });
 
+  // Bulut kullanıcılarını çekip birleştir
+  const syncUsersWithCloud = async () => {
+    try {
+      const remoteUsers = await fetchUsersFromSupabase();
+      if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        setUsers(prev => {
+          const merged = mergeUsers(prev, remoteUsers);
+          try {
+            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(merged));
+          } catch (e) {}
+          return merged;
+        });
+      } else {
+        // Eğer bulutta henüz kullanıcı kaydı yoksa yereldeki mevcut firma hesaplarını buluta aktar
+        setUsers(prev => {
+          if (prev.some(u => u.role === ROLES.company)) {
+            saveUsersToSupabase(prev);
+          }
+          return prev;
+        });
+      }
+    } catch (e) {
+      console.warn('Kullanıcı senkronizasyon hatası:', e);
+    }
+  };
+
+  useEffect(() => {
+    syncUsersWithCloud();
+    const handleFocus = () => syncUsersWithCloud();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
@@ -132,7 +207,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {}
   };
 
-  const login = (username, password) => {
+  const login = async (username, password) => {
     const uname = (username || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
 
@@ -151,13 +226,36 @@ export const AuthProvider = ({ children }) => {
       return { ok: true, user: adminObj };
     }
 
-    const user = users.find(u => (u.username || '').toLowerCase() === uname);
-    if (!user || user.passwordHash !== hashPassword(cleanPass)) {
-      return { ok: false, error: 'Kullanıcı adı veya şifre hatalı.' };
+    // 1. Önce mevcut yerel bellekteki kullanıcılardan kontrol et
+    let user = users.find(u => (u.username || '').toLowerCase() === uname);
+    if (user && user.passwordHash === hashPassword(cleanPass)) {
+      setCurrentUser(user);
+      persistSession(user);
+      return { ok: true, user };
     }
-    setCurrentUser(user);
-    persistSession(user);
-    return { ok: true, user };
+
+    // 2. Başka bilgisayardan veya gizli sekmeden girilmiş olabilir; Supabase buluttan çekip hemen doğrula!
+    try {
+      const remoteUsers = await fetchUsersFromSupabase();
+      if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        const merged = mergeUsers(users, remoteUsers);
+        setUsers(merged);
+        try {
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(merged));
+        } catch (e) {}
+
+        const remoteUser = merged.find(u => (u.username || '').toLowerCase() === uname);
+        if (remoteUser && remoteUser.passwordHash === hashPassword(cleanPass)) {
+          setCurrentUser(remoteUser);
+          persistSession(remoteUser);
+          return { ok: true, user: remoteUser };
+        }
+      }
+    } catch (err) {
+      console.warn('Giriş anında bulut sorgulama hatası:', err);
+    }
+
+    return { ok: false, error: 'Kullanıcı adı veya şifre hatalı.' };
   };
 
   const logout = () => {
@@ -183,11 +281,13 @@ export const AuthProvider = ({ children }) => {
     );
     if (duplicate) return { ok: false, error: 'Bu kullanıcı adı zaten kullanılıyor.' };
 
-    let saved;
+    let savedObj = null;
+    let nextUsersList = [];
+
     setUsers(prev => {
       const exists = payload.id && prev.some(u => u.id === payload.id);
       if (exists) {
-        saved = prev.map(u => {
+        nextUsersList = prev.map(u => {
           if (u.id !== payload.id) return u;
           const next = {
             ...u,
@@ -197,27 +297,30 @@ export const AuthProvider = ({ children }) => {
             companyId: payload.companyId !== undefined ? payload.companyId : u.companyId
           };
           if (payload.password) next.passwordHash = hashPassword(payload.password);
+          savedObj = next;
           return next;
         });
-        return saved;
+        return nextUsersList;
       }
 
-      saved = [
-        {
-          id: payload.id || makeId('user'),
-          username,
-          passwordHash: hashPassword(payload.password || '1234'),
-          name: payload.name || username,
-          role: payload.role || ROLES.operator,
-          companyId: payload.companyId || null,
-          createdAt: new Date().toISOString()
-        },
-        ...prev
-      ];
-      return saved;
+      savedObj = {
+        id: payload.id || makeId('user'),
+        username,
+        passwordHash: hashPassword(payload.password || '1234'),
+        name: payload.name || username,
+        role: payload.role || ROLES.operator,
+        companyId: payload.companyId || null,
+        createdAt: new Date().toISOString()
+      };
+      nextUsersList = [savedObj, ...prev];
+      return nextUsersList;
     });
 
-    return { ok: true };
+    if (nextUsersList.length > 0) {
+      saveUsersToSupabase(nextUsersList);
+    }
+
+    return { ok: true, user: savedObj };
   };
 
   const deleteUser = (id) => {
@@ -232,7 +335,14 @@ export const AuthProvider = ({ children }) => {
     if (currentUser?.id === id) {
       return { ok: false, error: 'Oturum açmış kullanıcı silinemez.' };
     }
-    setUsers(prev => prev.filter(u => u.id !== id));
+    let nextUsersList = [];
+    setUsers(prev => {
+      nextUsersList = prev.filter(u => u.id !== id);
+      return nextUsersList;
+    });
+    if (nextUsersList.length > 0) {
+      saveUsersToSupabase(nextUsersList);
+    }
     return { ok: true };
   };
 
@@ -250,7 +360,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deleteUsersByCompanyId = (companyId) => {
-    setUsers(prev => prev.filter(u => u.companyId !== companyId));
+    let nextUsersList = [];
+    setUsers(prev => {
+      nextUsersList = prev.filter(u => u.companyId !== companyId);
+      return nextUsersList;
+    });
+    if (nextUsersList.length > 0) {
+      saveUsersToSupabase(nextUsersList);
+    }
   };
 
   const clearAdminRecovery = () => {

@@ -258,8 +258,7 @@ export const DentalProvider = ({ children }) => {
       const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('dentallab_data_clean_v7');
       if (saved) {
         const parsed = JSON.parse(saved);
-        const isOldMock = parsed?.orders?.some(o => o.id === 'ORD-2026-001' || o.id === 'ORD-2026-002') ||
-                          parsed?.companies?.some(c => c.name?.includes('Dentİstanbul'));
+        const isOldMock = parsed?.companies?.some(c => c.name?.includes('Dentİstanbul'));
         if (parsed && Array.isArray(parsed.orders) && !isOldMock) {
           return {
             ...parsed,
@@ -319,41 +318,19 @@ export const DentalProvider = ({ children }) => {
   // Veritabanına Otomatik Kaydetme
   const persistToDatabase = useCallback(async (dataToPersist) => {
     setIsDbLoading(true);
-
     try {
-      // 1. Eğer Supabase yapılandırılmışsa doğrudan Supabase API'sine gönder
-      if (dbConfig.provider === 'supabase' && dbConfig.supabaseUrl && dbConfig.supabaseKey) {
-        // Supabase REST endpoint
-        const res = await fetch(`${dbConfig.supabaseUrl}/rest/v1/rpc/save_dental_data`, {
+      // Supabase doğrudan tablo bazında (saveOrderToSupabase vb.) kaydedilir.
+      // Opsiyonel /api/db endpointi varsa yedek olarak gönderilir
+      if (dbConfig.apiUrl && dbConfig.apiUrl !== '/api/db') {
+        await fetch(dbConfig.apiUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': dbConfig.supabaseKey,
-            'Authorization': `Bearer ${dbConfig.supabaseKey}`
-          },
-          body: JSON.stringify({ payload: dataToPersist })
-        });
-
-        if (res.ok) {
-          setDbStatus('connected');
-          return;
-        }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToPersist)
+        }).catch(() => {});
       }
-
-      // 2. Standart /api/db endpointi (Vercel Serverless / Postgres / KV)
-      const res = await fetch(dbConfig.apiUrl || '/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataToPersist)
-      });
-
-      if (res.ok) {
-        setDbStatus('connected');
-      } else {
-        setDbStatus('connected'); // Yerel önbellekte korundu
-      }
+      setDbStatus('connected');
     } catch (e) {
-      setDbStatus('connected'); // Yerel mod aktif
+      setDbStatus('connected');
     } finally {
       setIsDbLoading(false);
     }
@@ -389,7 +366,7 @@ export const DentalProvider = ({ children }) => {
       if (res.ok) {
         const result = await res.json();
         if (result && result.data && Array.isArray(result.data.orders)) {
-          const isMock = result.data.orders.some(o => o.id === 'ORD-2026-001');
+          const isMock = result.data.companies?.some(c => c.name?.includes('Dentİstanbul'));
           if (!isMock) {
             const migrated = {
               ...result.data,
@@ -535,7 +512,7 @@ export const DentalProvider = ({ children }) => {
     if (isCompany || isOperator) {
       showToast(
         isCompany
-          ? 'Firma hesabı yalnızca işlerini takip edebilir.'
+          ? 'Firma hesabı işleri ilerletemez; yalnızca durumunu takip edebilir.'
           : 'Kullanıcı işleri ilerletemez; yalnızca kendi iş emrini onaylanana kadar düzenleyebilir.',
         'error'
       );
@@ -545,15 +522,35 @@ export const DentalProvider = ({ children }) => {
   };
 
   // --- CRUD Metotları ---
-  const saveOrder = (order) => {
+  const saveOrder = async (order) => {
     let finalOrder = { ...order };
 
     if (isCompany) {
-      showToast('Firma hesabı iş emri oluşturamaz veya düzenleyemez.', 'error');
-      return null;
-    }
-
-    if (isOperator) {
+      const companyId = String(currentUser?.companyId || '');
+      if (!companyId) {
+        showToast('Kullanıcıya bağlı bir firma/klinik kaydı bulunamadı.', 'error');
+        return null;
+      }
+      const existing = finalOrder.id ? (data.orders || []).find(o => o.id === finalOrder.id) : null;
+      if (existing) {
+        if (existing.status !== 'pending_approval' || (String(existing.companyId) !== companyId && existing.createdBy !== currentUser?.id)) {
+          showToast('Onaylanan veya kliniğinize ait olmayan iş emri düzenlenemez.', 'error');
+          return null;
+        }
+        finalOrder = {
+          ...existing,
+          ...finalOrder,
+          companyId,
+          status: 'pending_approval',
+          currentStepIndex: 0
+        };
+      } else {
+        finalOrder.companyId = companyId;
+        finalOrder.status = 'pending_approval';
+        finalOrder.createdBy = currentUser?.id;
+        finalOrder.currentStepIndex = 0;
+      }
+    } else if (isOperator) {
       const existing = finalOrder.id ? (data.orders || []).find(o => o.id === finalOrder.id) : null;
       if (existing) {
         if (existing.createdBy !== currentUser?.id || existing.status !== 'pending_approval') {
@@ -590,10 +587,10 @@ export const DentalProvider = ({ children }) => {
       }
       return { ...prev, orders };
     });
-    saveOrderToSupabase(finalOrder);
+    await saveOrderToSupabase(finalOrder);
     if (Array.isArray(finalOrder.stlFiles) && finalOrder.stlFiles.length > 0) {
       const fileIds = finalOrder.stlFiles.map(f => f.id).filter(Boolean);
-      linkFilesToOrderInSupabase(finalOrder.id, fileIds);
+      await linkFilesToOrderInSupabase(finalOrder.id, fileIds);
     }
     showToast(`İş emri #${finalOrder.id} kaydedildi.`);
     return finalOrder;
@@ -1123,7 +1120,7 @@ export const DentalProvider = ({ children }) => {
     showToast('Klinik silindi.', 'warning');
   };
 
-  const saveDoctor = (doc) => {
+  const saveDoctor = async (doc) => {
     let savedObj = { ...doc };
     if (!savedObj.id) {
       savedObj.id = 'doc-' + Date.now();
@@ -1139,7 +1136,7 @@ export const DentalProvider = ({ children }) => {
       }
       return { ...prev, doctors };
     });
-    saveDoctorToSupabase(savedObj);
+    await saveDoctorToSupabase(savedObj);
     showToast('Hekim kaydedildi.');
     return savedObj;
   };
@@ -1150,7 +1147,7 @@ export const DentalProvider = ({ children }) => {
     showToast('Hekim silindi.', 'warning');
   };
 
-  const savePatient = (pat) => {
+  const savePatient = async (pat) => {
     let savedObj = { ...pat };
     if (!savedObj.id) {
       savedObj.id = 'pat-' + Date.now();
@@ -1166,7 +1163,7 @@ export const DentalProvider = ({ children }) => {
       }
       return { ...prev, patients };
     });
-    savePatientToSupabase(savedObj);
+    await savePatientToSupabase(savedObj);
     showToast('Hasta kaydedildi.');
     return savedObj;
   };

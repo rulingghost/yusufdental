@@ -17,11 +17,12 @@ import {
   UserCheck,
   X,
   Shield,
-  LogOut
+  LogOut,
+  Plus
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
-  const { orders, exportData, importData, clearAllData, setIsDbModalOpen, setIsTeamModalOpen, technicians } = useDental();
+  const { orders, exportData, importData, clearAllData, setIsDbModalOpen, setIsTeamModalOpen, technicians, setIsOrderModalOpen, setEditingOrder } = useDental();
   const { currentUser, isAdmin, isOperator, isCompany, logout } = useAuth();
   const fileInputRef = useRef(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -140,7 +141,7 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
 
         {isCompany && (
           <>
-            <li className="nav-heading">Takip</li>
+            <li className="nav-heading">Takip & Sipariş</li>
             <li>
               <NavLink
                 to="/orders"
@@ -153,6 +154,21 @@ export const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
                   <span className="nav-badge-count">{activeOrdersCount}</span>
                 )}
               </NavLink>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingOrder(null);
+                  setIsOrderModalOpen(true);
+                  handleNavClick();
+                }}
+                className="nav-item-btn"
+                style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer', color: 'var(--dental-blue)', fontWeight: 700 }}
+              >
+                <Plus size={18} />
+                <span>+ Yeni İş Emri Ver</span>
+              </button>
             </li>
             <li>
               <NavLink

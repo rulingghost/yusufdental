@@ -242,10 +242,17 @@ export const OrderDetailView = () => {
           flexWrap: 'wrap',
           gap: 10
         }}>
-          <strong>Bu iş emri onay bekliyor. Üretim henüz başlamadı.</strong>
+          <div>
+            <strong style={{ display: 'block', fontSize: '0.95rem' }}>⏳ Bu iş emri laboratuvar onayı bekliyor</strong>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              {isAdmin
+                ? 'Yönetici olarak bu iş emrini onaylayıp doğrudan 1. istasyondan üretim hattına alabilirsiniz.'
+                : 'İş emriniz laboratuvara iletilmiştir. Yönetici onayından sonra üretim istasyonlarına aktarılacaktır.'}
+            </span>
+          </div>
           {isAdmin && (
             <button type="button" className="btn-dental btn-dental-primary btn-dental-sm" onClick={() => setShowApproveDate(true)}>
-              Onayla ve başlat
+              ✓ Onayla ve Başlat
             </button>
           )}
         </div>

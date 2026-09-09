@@ -58,8 +58,10 @@ export async function fetchAllFromSupabase() {
       fileRes && fileRes.ok ? fileRes.json().catch(() => []) : []
     ]);
 
-    // Snake_case -> camelCase dönüşümü
-    const companies = (compData || []).map(c => ({
+    // Snake_case -> camelCase dönüşümü (sys- önekli dahili kayıtlar hariç)
+    const companies = (compData || [])
+      .filter(c => !String(c.id).startsWith('sys-'))
+      .map(c => ({
       id: c.id,
       name: c.name,
       contactPerson: c.contact_person,
@@ -177,7 +179,8 @@ export async function saveOrderToSupabase(order) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      console.warn('Supabase saveOrder error:', err);
+      console.error('Supabase saveOrder error:', err);
+      return false;
     }
 
     // Aşamaları kaydet
@@ -523,4 +526,50 @@ export async function linkFilesToOrderInSupabase(orderId, fileIds = []) {
     console.warn('linkFilesToOrderInSupabase warning:', e);
   }
 }
+
+// 15. KULLANICI HESAPLARINI BULUTTA SENKRONİZE ETME (CİHAZLAR VE GİZLİ SEKMELER ARASI)
+export const SYS_USERS_COMPANY_ID = 'sys-dentallab-users';
+
+export async function fetchUsersFromSupabase() {
+  try {
+    const headers = getReadHeaders();
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/companies?id=eq.${SYS_USERS_COMPANY_ID}&select=address`, { headers });
+    if (!res.ok) return null;
+    const rows = await res.json().catch(() => []);
+    if (Array.isArray(rows) && rows.length > 0 && rows[0]?.address) {
+      const parsed = JSON.parse(rows[0].address);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    return null;
+  } catch (error) {
+    console.warn('fetchUsersFromSupabase error:', error);
+    return null;
+  }
+}
+
+export async function saveUsersToSupabase(usersList) {
+  try {
+    if (!Array.isArray(usersList)) return false;
+    const headers = getHeaders();
+    const payload = {
+      id: SYS_USERS_COMPANY_ID,
+      name: 'SYSTEM_USERS_STORAGE',
+      contact_person: 'SYSTEM',
+      phone: '',
+      email: 'system@dentallab.internal',
+      address: JSON.stringify(usersList),
+      balance: 0
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/companies`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('saveUsersToSupabase error:', error);
+    return false;
+  }
+}
+
 

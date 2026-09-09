@@ -11,7 +11,7 @@ export const LoginView = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setError('');
 
@@ -28,13 +28,16 @@ export const LoginView = () => {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      const result = login(cleanUser, cleanPass);
-      setLoading(false);
+    try {
+      const result = await login(cleanUser, cleanPass);
       if (!result.ok) {
         setError(result.error || 'Kullanıcı adı veya şifre hatalı.');
       }
-    }, 150);
+    } catch (err) {
+      setError('Giriş yapılırken bir sorun oluştu.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

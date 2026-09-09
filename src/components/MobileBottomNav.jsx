@@ -34,6 +34,19 @@ export const MobileBottomNav = () => {
           </div>
           <span>İşlerim</span>
         </NavLink>
+
+        <button
+          type="button"
+          className="mobile-nav-add-btn"
+          onClick={() => {
+            setEditingOrder(null);
+            setIsOrderModalOpen(true);
+          }}
+          aria-label="Yeni iş emri ver"
+        >
+          <Plus size={24} strokeWidth={2.6} />
+        </button>
+
         <NavLink
           to="/kanban"
           className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}

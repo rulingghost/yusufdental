@@ -30,16 +30,14 @@ export const Navbar = ({ onToggleSidebar }) => {
       // Ctrl+N veya Cmd+N: Yeni sipariş modalını aç (eğer input içinde yazmıyorsa)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
         e.preventDefault();
-        if (!isCompany) {
-          setEditingOrder(null);
-          setIsOrderModalOpen(true);
-        }
+        setEditingOrder(null);
+        setIsOrderModalOpen(true);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setIsOrderModalOpen, setEditingOrder, isCompany]);
+  }, [setIsOrderModalOpen, setEditingOrder]);
 
   return (
     <header className="top-navbar">
@@ -98,7 +96,6 @@ export const Navbar = ({ onToggleSidebar }) => {
         </button>
         )}
 
-        {!isCompany && (
         <button
           type="button"
           className="btn-dental btn-dental-primary navbar-new-order-btn"
@@ -108,9 +105,8 @@ export const Navbar = ({ onToggleSidebar }) => {
           }}
         >
           <Plus size={18} strokeWidth={2.5} />
-          <span className="navbar-btn-text">{isOperator ? 'İş Emri Başlat' : 'Yeni İş Emri'}</span>
+          <span className="navbar-btn-text">{isCompany ? 'İş Emri Ver' : (isOperator ? 'İş Emri Başlat' : 'Yeni İş Emri')}</span>
         </button>
-        )}
 
         <button
           type="button"
